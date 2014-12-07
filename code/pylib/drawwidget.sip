@@ -8,6 +8,6 @@ class DrawWidget
 %End
 
 public:
-	DrawWidget(QWidget *parent = 0);
+	DrawWidget(Drawing *drawing, QWidget *parent = 0);
 	~DrawWidget();
 };

@@ -3,13 +3,15 @@
 
 #include <QOpenGLWidget>
 
+class Drawing;
+
 class OpenGLDrawWidget
 	: public QOpenGLWidget
 {
 	Q_OBJECT
 
 public:
-	OpenGLDrawWidget(QWidget *parent = 0);
+	OpenGLDrawWidget(Drawing *drawing, QWidget *parent = 0);
 	~OpenGLDrawWidget();
 
 private:

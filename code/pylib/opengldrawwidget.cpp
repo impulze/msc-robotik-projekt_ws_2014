@@ -1,23 +1,8 @@
-#include "drawwidget.h"
 #include "opengldrawwidget.h"
-
-#include <QBoxLayout>
 
 #include <iostream>
 
-DrawWidget::DrawWidget(QWidget *parent)
-	: QWidget(parent)
-{
-	new QHBoxLayout(this);
-
-	layout()->addWidget(new OpenGLDrawWidget(this));
-}
-
-DrawWidget::~DrawWidget()
-{
-}
-
-OpenGLDrawWidget::OpenGLDrawWidget(QWidget *parent)
+OpenGLDrawWidget::OpenGLDrawWidget(Drawing *drawing, QWidget *parent)
 	: QOpenGLWidget(parent)
 {
 	setAutoFillBackground(false);

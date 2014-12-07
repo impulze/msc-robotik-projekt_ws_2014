@@ -52,11 +52,11 @@ class ModuleConfiguration(object):
     """
 
     # The name of the module as it would be used in an import statement.
-    name = 'nativewidgets'
+    name = 'native'
 
     # The descriptive name of the module.  This is used in help text and error
     # messages.
-    descriptive_name = "NativeWidgets"
+    descriptive_name = "Native"
 
     # The version of the module as a string.  Set it to None if you don't
     # provide version information.
@@ -123,7 +123,7 @@ class ModuleConfiguration(object):
         the target configuration.
         """
 
-        return 'nativewidgets.sip'
+        return 'native.sip'
 
     def get_sip_installs(self, target_configuration):
         """ Return a tuple of the installation directory of the module's .sip
@@ -142,7 +142,7 @@ class ModuleConfiguration(object):
         version of Qt.  target_configuration is the target configuration.
         """
 
-        qmake = {'CONFIG': 'nativewidgets'}
+        qmake = {'CONFIG': 'native'}
 
         qmake['QT'] = 'opengl widgets'
         qmake['INCLUDEPATH'] = None # -Ifoo
@@ -1261,11 +1261,14 @@ macx {
     pro.write('HEADERS = sipAPI%s.h\n' % mname)
     # TODO: why do i have to add this?
     pro.write('HEADERS += drawwidget.h opengldrawwidget.h\n')
-    pro.write('QMAKE_CXXFLAGS += -ggdb3\n')
+    pro.write('SOURCES += drawwidget.cpp opengldrawwidget.cpp\n')
+    pro.write('HEADERS += drawing.h\n')
+    pro.write('SOURCES += drawing.cpp\n')
 
-    pro.write('SOURCES =')
-    for s in glob.glob('*.cpp'):
-        pro.write(' \\\n    %s' % s)
+    for s in glob.glob('sip%s*.cpp' % module_config.name):
+         pro.write('SOURCES += %s\n' % s)
+
+    pro.write('QMAKE_CXXFLAGS += -ggdb3\n')
     pro.write('\n')
 
     pro.close()

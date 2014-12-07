@@ -3,13 +3,15 @@
 
 #include <QWidget>
 
+class Drawing;
+
 class DrawWidget
 	: public QWidget
 {
 	Q_OBJECT
 
 public:
-	DrawWidget(QWidget *parent = 0);
+	DrawWidget(Drawing *drawing, QWidget *parent = 0);
 	~DrawWidget();
 
 private:
