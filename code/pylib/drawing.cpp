@@ -289,8 +289,8 @@ void Drawing::initialize()
 
 	for (int i = 0; i < 300; i++) {
 		double angle = 2.0 * M_PI * (1.0 * i) / 300;
-		double drawX = (ROBOT_DIAMETER / 2.0) * std::cos(angle);
-		double drawY = (ROBOT_DIAMETER / 2.0) * std::sin(angle);
+		double drawX = (ROBOT_DIAMETER / 2.5) * std::cos(angle);
+		double drawY = (ROBOT_DIAMETER / 2.5) * std::sin(angle);
 
 		vertices[(i + 1) * 2] = drawX;
 		vertices[(i + 1) * 2 + 1] = drawY;
