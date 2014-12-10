@@ -60,8 +60,10 @@ class DrawWidget(native.DrawWidget):
 class CentralWidget(QtWidgets.QWidget):
 	drawing = native.Drawing()
 	drawWidget = None
-	amountButtonAdd = None
-	amountButtonDel = None
+	pointButtonAdd = None
+	pointButtonDel = None
+	pointButtonStart = None
+	pointButtonEnd = None
 
 	def __init__(self, parent):
 		super(CentralWidget, self).__init__(parent)
@@ -73,10 +75,14 @@ class CentralWidget(QtWidgets.QWidget):
 		amountField.setValidator(QtGui.QIntValidator(2, 20000, self))
 		amountField.returnPressed.connect(self.amountOfNodesChanged)
 		amountSlider = QtWidgets.QSlider(QtCore.Qt.Horizontal, self)
-		self.amountButtonAdd = QtWidgets.QCheckBox(self.tr('Add waypoint'), self)
-		self.amountButtonDel = QtWidgets.QCheckBox(self.tr('Remove waypoint'), self)
-		self.amountButtonAdd.stateChanged.connect(self.addWaypointChanged)
-		self.amountButtonDel.stateChanged.connect(self.delWaypointChanged)
+		self.pointButtonAdd = QtWidgets.QCheckBox(self.tr('Add waypoint'), self)
+		self.pointButtonDel = QtWidgets.QCheckBox(self.tr('Remove waypoint'), self)
+		self.pointButtonStart = QtWidgets.QCheckBox(self.tr('Set startpoint'), self)
+		self.pointButtonEnd = QtWidgets.QCheckBox(self.tr('Set endpoint'), self)
+		self.pointButtonAdd.stateChanged.connect(self.addWaypointChanged)
+		self.pointButtonDel.stateChanged.connect(self.delWaypointChanged)
+		self.pointButtonStart.stateChanged.connect(self.setStartpointChanged)
+		self.pointButtonEnd.stateChanged.connect(self.setEndpointChanged)
 
 		amountLayout = QtWidgets.QVBoxLayout()
 		amountTopLayout = QtWidgets.QHBoxLayout()
@@ -84,30 +90,43 @@ class CentralWidget(QtWidgets.QWidget):
 		amountTopLayout.addWidget(amountField)
 		amountLayout.addLayout(amountTopLayout)
 		amountLayout.addWidget(amountSlider)
-		amountLayout.addWidget(self.amountButtonAdd)
-		amountLayout.addWidget(self.amountButtonDel)
 
 		sideLayout = QtWidgets.QVBoxLayout()
 		sideLayout.addLayout(amountLayout)
+		sideLayout.addWidget(self.pointButtonAdd)
+		sideLayout.addWidget(self.pointButtonDel)
+		sideLayout.addWidget(self.pointButtonStart)
+		sideLayout.addWidget(self.pointButtonEnd)
 		sideLayout.addItem(QtWidgets.QSpacerItem(1, 1, QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding))
 
 		mainLayout = QtWidgets.QHBoxLayout(self)
 		mainLayout.addLayout(sideLayout)
 		mainLayout.addWidget(self.drawWidget, 1)
 
+	def uncheckButtons(self, buttons):
+		for button in buttons:
+			if button.checkState() == QtCore.Qt.Checked:
+				button.setCheckState(QtCore.Qt.Unchecked)
+
 	def addWaypointChanged(self, state):
 		if state == QtCore.Qt.Checked:
-			if self.amountButtonDel.checkState() == QtCore.Qt.Checked:
-				self.amountButtonDel.setCheckState(QtCore.Qt.Unchecked)
-
+			self.uncheckButtons([self.pointButtonDel, self.pointButtonStart, self.pointButtonEnd])
 			self.drawing.setWaypointModification(native.Drawing.WaypointAdd)
 
 	def delWaypointChanged(self, state):
 		if state == QtCore.Qt.Checked:
-			if self.amountButtonAdd.checkState() == QtCore.Qt.Checked:
-				self.amountButtonAdd.setCheckState(QtCore.Qt.Unchecked)
-
+			self.uncheckButtons([self.pointButtonAdd, self.pointButtonStart, self.pointButtonEnd])
 			self.drawing.setWaypointModification(native.Drawing.WaypointDelete)
+
+	def setStartpointChanged(self, state):
+		if state == QtCore.Qt.Checked:
+			self.uncheckButtons([self.pointButtonAdd, self.pointButtonDel, self.pointButtonEnd])
+			self.drawing.setWaypointModification(native.Drawing.WaypointStart)
+
+	def setEndpointChanged(self, state):
+		if state == QtCore.Qt.Checked:
+			self.uncheckButtons([self.pointButtonAdd, self.pointButtonDel, self.pointButtonStart])
+			self.drawing.setWaypointModification(native.Drawing.WaypointEnd)
 
 	def amountOfNodesChanged(self):
 		lineEdit = self.sender()

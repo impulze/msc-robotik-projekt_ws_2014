@@ -11,6 +11,8 @@ public:
 	{
 		WaypointAdd,
 		WaypointDelete,
+		WaypointStart,
+		WaypointEnd,
 		WaypointNoMod
 	};
 
@@ -21,7 +23,6 @@ public:
 	void toImage(const char *name);
 
 	void setNodes(int amount);
-	void setOrigin(int x, int y);
 	void setWaypointModification(WaypointModification modification);
 	void mouseClick(int x, int y);
 };

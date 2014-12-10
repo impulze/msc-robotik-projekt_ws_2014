@@ -16,6 +16,8 @@ public:
 	{
 		WaypointAdd,
 		WaypointDelete,
+		WaypointStart,
+		WaypointEnd,
 		WaypointNoMod
 	};
 
@@ -23,7 +25,6 @@ public:
 	void toImage(const char *name);
 
 	void setNodes(int amount);
-	void setOrigin(int x, int y);
 	void setWaypointModification(WaypointModification modification);
 	void mouseClick(int x, int y);
 
@@ -34,8 +35,10 @@ public:
 private:
 	void freeTexture();
 	bool checkSurrounding(int x, int y);
+	bool checkNode(int x, int y);
 	bool addNode(int x, int y);
 	bool delNode(int x, int y);
+	void drawPoint(int x, int y);
 
 	struct Coord
 	{
@@ -43,6 +46,7 @@ private:
 		int y;
 
 		bool operator<(Coord const &other) const;
+		bool operator==(Coord const &other) const;
 	};
 
 	GLuint texture_;
@@ -53,6 +57,8 @@ private:
 	std::set<Coord> collideNodes_;
 	std::set<Coord> outsideNodes_;
 	std::set<Coord> waypointNodes_;
+	Coord startNode_;
+	Coord endNode_;
 	WaypointModification waypointModification_;
 	GLint viewport_[4];
 	GLuint circleVBO_;

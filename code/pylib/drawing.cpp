@@ -58,18 +58,6 @@ namespace
 		return red == 255 && green == 255 && blue == 255;
 	}
 
-#if COLLISION_DETECTION
-	void drawRect(int x, int y, int w, int h)
-	{
-		int left = std::max(0, x - ROBOT_DIAMETER / 2);
-		int right = std::min(static_cast<int>(w) - 1, x + ROBOT_DIAMETER / 2);
-		int bottom = std::max(0, y - ROBOT_DIAMETER / 2);
-		int top = std::min(static_cast<int>(h) - 1, y + ROBOT_DIAMETER / 2);
-
-		glRecti(left, bottom, right, top);
-	}
-#endif
-
 	long random_at_most(long max)
 	{
 		unsigned long num_bins = static_cast<unsigned long>(max) + 1;
@@ -226,12 +214,6 @@ void Drawing::setNodes(int amount)
 	}
 }
 
-void Drawing::setOrigin(int x, int y)
-{
-	(void)x;
-	(void)y;
-}
-
 void Drawing::setWaypointModification(WaypointModification modification)
 {
 	waypointModification_ = modification;
@@ -264,10 +246,35 @@ void Drawing::mouseClick(int x, int y)
 	x = posX;
 	y = posY;
 
-	if (waypointModification_ == WaypointAdd) {
-		addNode(x, y);
-	} else if (waypointModification_ == WaypointDelete) {
-		delNode(x, y);
+	switch (waypointModification_) {
+		case WaypointAdd:
+			addNode(x, y);
+			break;
+
+		case WaypointDelete:
+			delNode(x, y);
+			break;
+
+		case WaypointStart:
+			if (checkNode(x, y)) {
+				printf("Setting startpoint (%d/%d).\n", x, y);
+				startNode_.x = x;
+				startNode_.y = textureHeight_ - 1 - y;
+			}
+
+			break;
+
+		case WaypointEnd:
+			if (checkNode(x, y)) {
+				printf("Setting endpoint (%d/%d).\n", x, y);
+				endNode_.x = x;
+				endNode_.y = textureHeight_ - 1 - y;
+			}
+
+			break;
+
+		default:
+			break;
 	}
 }
 
@@ -301,6 +308,30 @@ void Drawing::initialize()
 		throw_error_from_gl_error();
 	} catch (...) {
 		glDeleteBuffers(1, &circleVBO_);
+	}
+
+	while (true) {
+		int randX = random_at_most(textureWidth_ - 1);
+		int randY = random_at_most(textureHeight_ - 1);
+
+		if (checkNode(randX, randY)) {
+			printf("Setting startpoint (%d/%d).\n", randX, randY);
+			startNode_.x = randX;
+			startNode_.y = textureHeight_ - 1 - randY;
+			break;
+		}
+	}
+
+	while (true) {
+		int randX = random_at_most(textureWidth_ - 1);
+		int randY = random_at_most(textureHeight_ - 1);
+
+		if (checkNode(randX, randY)) {
+			printf("Setting endpoint (%d/%d).\n", randX, randY);
+			endNode_.x = randX;
+			endNode_.y = textureHeight_ - 1 - randY;
+			break;
+		}
 	}
 }
 
@@ -370,22 +401,24 @@ void Drawing::paint()
 	glPushMatrix();
 	glTranslatef(0.0f, 0.0f, -3.0f);
 
-	glColor3f(1.0f, 0.0f, 0.0f);
-
 	glBindBuffer(GL_ARRAY_BUFFER, circleVBO_);
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(2, GL_DOUBLE, 0, 0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
+	glColor3f(1.0f, 1.0f, 0.0f);
+
 	for (std::set<Coord>::const_iterator it = waypointNodes_.begin(); it != waypointNodes_.end(); it++) {
-#if COLLISION_DETECTION
-		drawRect(it->x, it->y, textureWidth_, textureHeight_);
-#else
-		glTranslatef(it->x, it->y, 0.0f);
-		glDrawArrays(GL_TRIANGLE_FAN, 0, 301);
-		glTranslatef(-it->x, -it->y, 0.0f);
-#endif
+		drawPoint(it->x, it->y);
 	}
+
+	glTranslatef(0.0f, 0.0f, 0.5f);
+	glColor3f(1.0f, 0.0f, 0.0f);
+	drawPoint(endNode_.x, endNode_.y);
+
+	glTranslatef(0.0f, 0.0f, 0.5f);
+	glColor3f(0.0f, 1.0f, 0.0f);
+	drawPoint(startNode_.x, startNode_.y);
 
 	glDisableClientState(GL_VERTEX_ARRAY);
 
@@ -433,18 +466,18 @@ bool Drawing::checkSurrounding(int x, int y)
 	return true;
 }
 
-bool Drawing::addNode(int x, int y)
+bool Drawing::checkNode(int x, int y)
 {
 	ILubyte *byte = imageData_ + (y * textureWidth_ + x) * 3;
 
 	if (isBlack(byte)) {
-		std::fprintf(stderr, "Adding waypoint (%d/%d) would collide with an object or wall.\n", x, y);
+		std::fprintf(stderr, "Point (%d/%d) collides with an object or wall.\n", x, y);
 		return false;
 	}
 
 	if (!checkSurrounding(x, y)) {
-		std::fprintf(stderr, "Due to roboter diameter the waypoint (%d/%d) would collide with an object or wall.\n", x, y);
-		return true;
+		std::fprintf(stderr, "Due to roboter diameter the point (%d/%d) would collide with an object or wall.\n", x, y);
+		return false;
 	}
 
 	Coord coord;
@@ -454,21 +487,42 @@ bool Drawing::addNode(int x, int y)
 	std::set<Coord>::iterator found = outsideNodes_.find(coord);
 
 	if (found != outsideNodes_.end()) {
-		std::fprintf(stderr, "Waypoint (%d/%d) is outside of the room.\n", x, y);
+		std::fprintf(stderr, "Point (%d/%d) is outside of the room.\n", x, y);
 		return false;
 	}
 
 	found = waypointNodes_.find(coord);
 
 	if (found != waypointNodes_.end()) {
-		std::fprintf(stderr, "Waypoint (%d/%d) already present.\n", x, y);
+		std::fprintf(stderr, "Point (%d/%d) is a waypoint.\n", x, y);
 		return false;
 	}
 
-	std::cout << "adding node: " << x << '/' << y << '\n';
-	waypointNodes_.insert(coord);
+	if (startNode_ == coord) {
+		std::fprintf(stderr, "Point (%d/%d) is startpoint.\n", x, y);
+		return false;
+	}
+
+	if (endNode_ == coord) {
+		std::fprintf(stderr, "Point (%d/%d) is endpoint.\n", x, y);
+		return false;
+	}
 
 	return true;
+}
+
+bool Drawing::addNode(int x, int y)
+{
+	if (checkNode(x, y)) {
+		std::cout << "adding node: " << x << '/' << y << '\n';
+		Coord coord;
+		coord.x = x;
+		coord.y = textureHeight_ - 1 - y;
+		waypointNodes_.insert(coord);
+		return true;
+	}
+
+	return false;
 }
 
 bool Drawing::delNode(int x, int y)
@@ -499,6 +553,22 @@ bool Drawing::delNode(int x, int y)
 	return deleted;
 }
 
+void Drawing::drawPoint(int x, int y)
+{
+#if COLLISION_DETECTION
+		int left = std::max(0, x - ROBOT_DIAMETER / 2);
+		int right = std::min(static_cast<int>(textureWidth_) - 1, x + ROBOT_DIAMETER / 2);
+		int bottom = std::max(0, y - ROBOT_DIAMETER / 2);
+		int top = std::min(static_cast<int>(textureHeight_) - 1, y + ROBOT_DIAMETER / 2);
+
+		glRecti(left, bottom, right, top);
+#else
+		glTranslatef(x, y, 0.0f);
+		glDrawArrays(GL_TRIANGLE_FAN, 0, 301);
+		glTranslatef(-x, -y, 0.0f);
+#endif
+}
+
 bool Drawing::Coord::operator<(Coord const &other) const
 {
 	if (x != other.x) {
@@ -506,4 +576,9 @@ bool Drawing::Coord::operator<(Coord const &other) const
 	}
 
 	return y < other.y;
+}
+
+bool Drawing::Coord::operator==(Coord const &other) const
+{
+	return x == other.x && y == other.y;
 }
