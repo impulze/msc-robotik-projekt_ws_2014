@@ -2,7 +2,6 @@
 #include "opengldrawwidget.h"
 
 #include <QTimer>
-#include <iostream>
 
 OpenGLDrawWidget::OpenGLDrawWidget(Drawing *drawing, QWidget *parent)
 	: QOpenGLWidget(parent),
@@ -32,5 +31,7 @@ void OpenGLDrawWidget::paintGL()
 
 void OpenGLDrawWidget::resizeGL(int width, int height)
 {
-	drawing_->resize(width, height);
+	int deviceWidth = width * devicePixelRatio();
+	int deviceHeight = height * devicePixelRatio();
+	drawing_->resize(deviceWidth, deviceHeight);
 }

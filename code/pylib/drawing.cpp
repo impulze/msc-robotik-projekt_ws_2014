@@ -4,6 +4,7 @@
 #include <IL/ilu.h>
 
 #include <cmath>
+#include <cstdio>
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
@@ -54,13 +55,24 @@ namespace
 		return red == 255 && green == 255 && blue == 255;
 	}
 
+#if COLLISION_CHECK
+	void drawCircle(int x, int y, int h, int w)
+	{
+		int left = std::max(0, x - ROBOT_DIAMETER / 2);
+		int right = std::min(static_cast<int>(w) - 1, x + ROBOT_DIAMETER / 2);
+		int bottom = std::max(0, y - ROBOT_DIAMETER / 2);
+		int top = std::min(static_cast<int>(h) - 1, y + ROBOT_DIAMETER / 2);
+
+		glRecti(left, bottom, right, top);
+	}
+#else
 	void drawCircle(int x, int y)
 	{
 		glBegin(GL_TRIANGLE_FAN);
 		glVertex2d(1.0 * x, 1.0 * y);
 
-		for (int i = 0; i < 100; i++) {
-			double angle = 2.0 * M_PI * (1.0 * i) / 100;
+		for (int i = 0; i < 300; i++) {
+			double angle = 2.0 * M_PI * (1.0 * i) / 300;
 			double drawX = 1.0 * x + (ROBOT_DIAMETER / 2.0) * std::cos(angle);
 			double drawY = 1.0 * y + (ROBOT_DIAMETER / 2.0) * std::sin(angle);
 			glVertex3d(drawX, drawY, 0.0);
@@ -68,6 +80,7 @@ namespace
 
 		glEnd();
 	}
+#endif
 
 	long random_at_most(long max)
 	{
@@ -98,6 +111,7 @@ struct Coord
 };
 
 Drawing::Drawing()
+	: waypointModification_(WaypointNoMod)
 {
 	ilInit();
 	throw_error_from_il_error();
@@ -146,7 +160,6 @@ void Drawing::fromImage(const char *name)
 		glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		throw_error_from_gl_error();
 	} catch (...) {
 		glDeleteTextures(1, &texture_);
 		ilDeleteImages(1, &image_);
@@ -216,30 +229,12 @@ void Drawing::setNodes(int amount)
 		int randX = random_at_most(textureWidth_ - 1);
 		int randY = random_at_most(textureHeight_ - 1);
 
-		ILubyte *byte = imageData_ + (randY * textureWidth_ + randX) * 3;
+		bool added = addNode(randX, randY);
 
-		if (isBlack(byte)) {
+		if (!added) {
 			i--;
 			continue;
 		}
-
-		if (!checkSurrounding(randX, randY)) {
-			i--;
-			continue;
-		}
-
-		Coord coord;
-		coord.x = randX;
-		coord.y = textureHeight_ - 1 - randY;
-
-		std::set<Coord>::iterator found = outsideNodes_.find(coord);
-
-		if (found != outsideNodes_.end()) {
-			i--;
-			continue;
-		}
-
-		waypointNodes_.insert(coord);
 	}
 }
 
@@ -249,10 +244,68 @@ void Drawing::setOrigin(int x, int y)
 	(void)y;
 }
 
+void Drawing::setWaypointModification(WaypointModification modification)
+{
+	waypointModification_ = modification;
+}
+
+void Drawing::mouseClick(int x, int y)
+{
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glOrtho(0, textureWidth_, 0, textureHeight_, -1.0f, 4.0f);
+	throw_error_from_gl_error();
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+
+	// Texture
+	glTranslatef(0.0f, 0.0f, -3.5f);
+
+	GLdouble modelview[16], projection[16];
+	glGetDoublev(GL_MODELVIEW_MATRIX, modelview);
+	glGetDoublev(GL_PROJECTION_MATRIX, projection);
+
+	GLfloat z;
+	glReadPixels(x, viewport_[3] - y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &z);
+
+	GLdouble posX, posY, posZ;
+	gluUnProject(x, y, z, modelview, projection, viewport_, &posX, &posY, &posZ);
+	throw_error_from_gl_error();
+
+	x = posX;
+	y = posY;
+
+	if (waypointModification_ == WaypointAdd) {
+		std::cout << "adding node: " << x << '/' << y << '\n';
+		addNode(x, y);
+	} else if (waypointModification_ == WaypointDelete) {
+		std::cout << "deleting node: " << x << '/' << y << '\n';
+		int left = std::max(0, x - ROBOT_DIAMETER / 2);
+		int right = std::min(static_cast<int>(textureWidth_) - 1, x + ROBOT_DIAMETER / 2);
+		int bottom = std::max(0, y - ROBOT_DIAMETER / 2);
+		int top = std::min(static_cast<int>(textureHeight_) - 1, y + ROBOT_DIAMETER / 2);
+
+		for (int i = bottom; i <= top; i++) {
+			for (int j = left; j <= right; j++) {
+				Coord coord;
+
+				coord.x = i;
+				coord.y = j;
+
+				std::set<Coord>::iterator found = waypointNodes_.find(coord);
+
+				if (found != waypointNodes_.end()) {
+					waypointNodes_.erase(found);
+				}
+			}
+		}
+	}
+}
+
 void Drawing::initialize()
 {
 	fromImage("/home/impulze/Documents/example_room2.png");
-	glEnable(GL_TEXTURE_2D);
 	glEnable(GL_DEPTH_TEST);
 }
 
@@ -283,8 +336,7 @@ void Drawing::paint()
 
 	glEnable(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, texture_);
-	//glColor3i(1, 0, 0);
-	glBegin(GL_QUADS);
+	glBegin(GL_POLYGON);
 	glTexCoord2i(0, 1);
 	glVertex2i(0, 0);
 	glTexCoord2i(0, 0);
@@ -298,11 +350,12 @@ void Drawing::paint()
 
 	glPopMatrix();
 
+#if COLLISION_CHECK
 	// Walls
 	glPushMatrix();
 	glTranslatef(0.0f, 0.0f, -3.0f);
 
-	glColor3f(0.0f, 0.0f, 0.0f);
+	glColor3f(0.0f, 1.0f, 0.0f);
 	glBegin(GL_POINTS);
 
 	for (std::set<Coord>::const_iterator it = collideNodes_.begin(); it != collideNodes_.end(); it++) {
@@ -312,6 +365,7 @@ void Drawing::paint()
 	glEnd();
 
 	glPopMatrix();
+#endif
 
 	// Waypoints
 	glPushMatrix();
@@ -320,7 +374,11 @@ void Drawing::paint()
 	glColor3f(1.0f, 0.0f, 0.0f);
 
 	for (std::set<Coord>::const_iterator it = waypointNodes_.begin(); it != waypointNodes_.end(); it++) {
+#if COLLISION_CHECK
+		drawCircle(it->x, it->y, textureHeight_, textureWidth_);
+#else
 		drawCircle(it->x, it->y);
+#endif
 	}
 
 	glPopMatrix();
@@ -328,6 +386,10 @@ void Drawing::paint()
 
 void Drawing::resize(int width, int height)
 {
+	viewport_[0] = 0;
+	viewport_[1] = 0;
+	viewport_[2] = width;
+	viewport_[3] = height;
 }
 
 void Drawing::freeTexture()
@@ -341,7 +403,7 @@ bool Drawing::checkSurrounding(int x, int y)
 {
 	int left = std::max(0, x - ROBOT_DIAMETER / 2);
 	int right = std::min(static_cast<int>(textureWidth_) - 1, x + ROBOT_DIAMETER / 2);
-	int bottom = std::max(0, y - ROBOT_DIAMETER /2);
+	int bottom = std::max(0, y - ROBOT_DIAMETER / 2);
 	int top = std::min(static_cast<int>(textureHeight_) - 1, y + ROBOT_DIAMETER / 2);
 
 	for (int i = bottom; i <= top; i++) {
@@ -353,6 +415,43 @@ bool Drawing::checkSurrounding(int x, int y)
 			}
 		}
 	}
+
+	return true;
+}
+
+bool Drawing::addNode(int x, int y)
+{
+	ILubyte *byte = imageData_ + (y * textureWidth_ + x) * 3;
+
+	if (isBlack(byte)) {
+		std::fprintf(stderr, "Adding waypoint (%d/%d) would collide with an object or wall.\n", x, y);
+		return false;
+	}
+
+	if (!checkSurrounding(x, y)) {
+		std::fprintf(stderr, "Due to roboter diameter the waypoint (%d/%d) would collide with an object or wall.\n", x, y);
+		return true;
+	}
+
+	Coord coord;
+	coord.x = x;
+	coord.y = textureHeight_ - 1 - y;
+
+	std::set<Coord>::iterator found = outsideNodes_.find(coord);
+
+	if (found != outsideNodes_.end()) {
+		std::fprintf(stderr, "Waypoint (%d/%d) is outside of the room.\n", x, y);
+		return false;
+	}
+
+	found = waypointNodes_.find(coord);
+
+	if (found != waypointNodes_.end()) {
+		std::fprintf(stderr, "Waypoint (%d/%d) already present.\n", x, y);
+		return false;
+	}
+
+	waypointNodes_.insert(coord);
 
 	return true;
 }

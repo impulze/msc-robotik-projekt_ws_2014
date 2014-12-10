@@ -8,6 +8,7 @@ DrawWidget::DrawWidget(Drawing *drawing, QWidget *parent)
 {
 	new QHBoxLayout(this);
 
+	layout()->setContentsMargins(0, 0, 0, 0);
 	layout()->addWidget(new OpenGLDrawWidget(drawing, this));
 }
 

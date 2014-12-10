@@ -7,6 +7,13 @@ class Drawing
 %End
 
 public:
+	enum WaypointModification
+	{
+		WaypointAdd,
+		WaypointDelete,
+		WaypointNoMod
+	};
+
 	Drawing();
 	~Drawing();
 
@@ -15,4 +22,6 @@ public:
 
 	void setNodes(int amount);
 	void setOrigin(int x, int y);
+	void setWaypointModification(WaypointModification modification);
+	void mouseClick(int x, int y);
 };
