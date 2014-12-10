@@ -54,6 +54,7 @@ private:
 	std::set<Coord> waypointNodes_;
 	WaypointModification waypointModification_;
 	GLint viewport_[4];
+	GLuint circleVBO_;
 };
 
 #endif // DRAWING_H_INCLUDED

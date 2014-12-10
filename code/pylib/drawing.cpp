@@ -1,3 +1,4 @@
+#define GL_GLEXT_PROTOTYPES
 #include <drawing.h>
 
 #include <GL/glu.h>
@@ -11,7 +12,9 @@
 #include <stdexcept>
 #include <vector>
 
-#include <unistd.h>
+#if MEASURE
+#include <sys/time.h>
+#endif
 
 #define ROBOT_DIAMETER 5
 
@@ -55,8 +58,8 @@ namespace
 		return red == 255 && green == 255 && blue == 255;
 	}
 
-#if COLLISION_CHECK
-	void drawCircle(int x, int y, int h, int w)
+#if COLLISION_DETECTION
+	void drawRect(int x, int y, int w, int h)
 	{
 		int left = std::max(0, x - ROBOT_DIAMETER / 2);
 		int right = std::min(static_cast<int>(w) - 1, x + ROBOT_DIAMETER / 2);
@@ -64,21 +67,6 @@ namespace
 		int top = std::min(static_cast<int>(h) - 1, y + ROBOT_DIAMETER / 2);
 
 		glRecti(left, bottom, right, top);
-	}
-#else
-	void drawCircle(int x, int y)
-	{
-		glBegin(GL_TRIANGLE_FAN);
-		glVertex2d(1.0 * x, 1.0 * y);
-
-		for (int i = 0; i < 300; i++) {
-			double angle = 2.0 * M_PI * (1.0 * i) / 300;
-			double drawX = 1.0 * x + (ROBOT_DIAMETER / 2.0) * std::cos(angle);
-			double drawY = 1.0 * y + (ROBOT_DIAMETER / 2.0) * std::sin(angle);
-			glVertex3d(drawX, drawY, 0.0);
-		}
-
-		glEnd();
 	}
 #endif
 
@@ -122,6 +110,7 @@ Drawing::Drawing()
 Drawing::~Drawing()
 {
 	freeTexture();
+	glDeleteBuffers(1, &circleVBO_);
 }
 
 void Drawing::fromImage(const char *name)
@@ -307,6 +296,33 @@ void Drawing::initialize()
 {
 	fromImage("/home/impulze/Documents/example_room2.png");
 	glEnable(GL_DEPTH_TEST);
+
+	GLdouble vertices[(300 + 1) * 2];
+
+	vertices[0] = 0; vertices[1] = 0;
+
+	for (int i = 0; i < 300; i++) {
+		double angle = 2.0 * M_PI * (1.0 * i) / 300;
+		double drawX = (ROBOT_DIAMETER / 2.0) * std::cos(angle);
+		double drawY = (ROBOT_DIAMETER / 2.0) * std::sin(angle);
+
+		vertices[(i + 1) * 2] = drawX;
+		vertices[(i + 1) * 2 + 1] = drawY;
+	}
+
+	glGenBuffersARB(1, &circleVBO_);
+	throw_error_from_gl_error();
+
+	try {
+		glBindBufferARB(GL_ARRAY_BUFFER_ARB, circleVBO_);
+		throw_error_from_gl_error();
+		glBufferDataARB(GL_ARRAY_BUFFER_ARB, sizeof vertices, vertices, GL_STATIC_DRAW);
+		throw_error_from_gl_error();
+		glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
+		throw_error_from_gl_error();
+	} catch (...) {
+		glDeleteBuffers(1, &circleVBO_);
+	}
 }
 
 void Drawing::paint()
@@ -314,6 +330,10 @@ void Drawing::paint()
 	if (glIsTexture(texture_) != GL_TRUE) {
 		return;
 	}
+
+#if MEASURE
+	struct timeval fir; gettimeofday(&fir, NULL);
+#endif
 
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
@@ -373,15 +393,30 @@ void Drawing::paint()
 
 	glColor3f(1.0f, 0.0f, 0.0f);
 
+	glBindBuffer(GL_ARRAY_BUFFER, circleVBO_);
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(2, GL_DOUBLE, 0, 0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
 	for (std::set<Coord>::const_iterator it = waypointNodes_.begin(); it != waypointNodes_.end(); it++) {
-#if COLLISION_CHECK
-		drawCircle(it->x, it->y, textureHeight_, textureWidth_);
+#if COLLISION_DETECTION
+		drawRect(it->x, it->y, textureWidth_, textureHeight_);
 #else
-		drawCircle(it->x, it->y);
+		glTranslatef(it->x, it->y, 0.0f);
+		glDrawArrays(GL_TRIANGLE_FAN, 0, 301);
+		glTranslatef(-it->x, -it->y, 0.0f);
 #endif
 	}
 
+	glDisableClientState(GL_VERTEX_ARRAY);
+
 	glPopMatrix();
+
+#if MEASURE
+	struct timeval sec; gettimeofday(&sec, NULL);
+	struct timeval res; timersub(&sec, &fir, &res);
+	printf("rendering: %lu sec %lu usec\n", res.tv_sec, res.tv_usec);
+#endif
 }
 
 void Drawing::resize(int width, int height)
