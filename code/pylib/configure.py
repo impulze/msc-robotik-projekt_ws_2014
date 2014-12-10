@@ -74,7 +74,7 @@ class ModuleConfiguration(object):
     minimum_sip_version = '4.15.5'
 
     # Set if support for C++ exceptions can be disabled.
-    no_exceptions = True
+    no_exceptions = False
 
     # Set if the module supports redefining 'protected' as 'public'.
     protected_is_public_is_supported = True
@@ -146,7 +146,7 @@ class ModuleConfiguration(object):
 
         qmake['QT'] = 'opengl widgets'
         qmake['INCLUDEPATH'] = None # -Ifoo
-        qmake['LIBS'] = None # -Lfoo
+        qmake['LIBS'] = '-lIL -lILU -lGLU' # -Lfoo
         qmake['DEFINES'] = None # -DFOO
 
         return qmake

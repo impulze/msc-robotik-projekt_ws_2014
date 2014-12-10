@@ -1,11 +1,18 @@
+#include "drawing.h"
 #include "opengldrawwidget.h"
 
+#include <QTimer>
 #include <iostream>
 
 OpenGLDrawWidget::OpenGLDrawWidget(Drawing *drawing, QWidget *parent)
-	: QOpenGLWidget(parent)
+	: QOpenGLWidget(parent),
+	  drawing_(drawing)
 {
 	setAutoFillBackground(false);
+
+	QTimer *timer = new QTimer;
+	connect(timer, SIGNAL(timeout()), this, SLOT(update()));
+	timer->start(0);
 }
 
 OpenGLDrawWidget::~OpenGLDrawWidget()
@@ -14,17 +21,16 @@ OpenGLDrawWidget::~OpenGLDrawWidget()
 
 void OpenGLDrawWidget::initializeGL()
 {
-	glClearColor(0.5f, 1.0f, 0.3f, 1.0f);
+	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+	drawing_->initialize();
 }
 
 void OpenGLDrawWidget::paintGL()
 {
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-	glColor3f(0.0f, 0.5f, 1.0f);
-	glRectf(-0.75f, 0.75f, 0.75f, -0.75f);
+	drawing_->paint();
 }
 
 void OpenGLDrawWidget::resizeGL(int width, int height)
 {
-	std::cout << "resizeGL\n";
+	drawing_->resize(width, height);
 }

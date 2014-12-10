@@ -22,6 +22,9 @@ private:
 	void initializeGL();
 	void paintGL();
 	void resizeGL(int width, int height);
+
+private:
+	Drawing *drawing_;
 };
 
 #endif // OPENGLDRAWWIDGET_H_INCLUDED
