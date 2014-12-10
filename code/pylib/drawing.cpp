@@ -80,7 +80,6 @@ namespace
 		int x;
 
 		while (true) {
-			//x = random();
 			x = std::rand();
 
 			if (num_rand - defect > static_cast<unsigned long>(x)) {
