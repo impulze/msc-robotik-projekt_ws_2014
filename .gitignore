@@ -7,3 +7,5 @@
 /code/pylib/native.sip
 /code/pylib/sipnative*.cpp
 /code/pylib/sipAPInative.h
+__pycache__/
+.gdbinit
