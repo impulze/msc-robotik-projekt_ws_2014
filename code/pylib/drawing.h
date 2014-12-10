@@ -35,6 +35,7 @@ private:
 	void freeTexture();
 	bool checkSurrounding(int x, int y);
 	bool addNode(int x, int y);
+	bool delNode(int x, int y);
 
 	struct Coord
 	{

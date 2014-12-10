@@ -266,29 +266,9 @@ void Drawing::mouseClick(int x, int y)
 	y = posY;
 
 	if (waypointModification_ == WaypointAdd) {
-		std::cout << "adding node: " << x << '/' << y << '\n';
 		addNode(x, y);
 	} else if (waypointModification_ == WaypointDelete) {
-		std::cout << "deleting node: " << x << '/' << y << '\n';
-		int left = std::max(0, x - ROBOT_DIAMETER / 2);
-		int right = std::min(static_cast<int>(textureWidth_) - 1, x + ROBOT_DIAMETER / 2);
-		int bottom = std::max(0, y - ROBOT_DIAMETER / 2);
-		int top = std::min(static_cast<int>(textureHeight_) - 1, y + ROBOT_DIAMETER / 2);
-
-		for (int i = bottom; i <= top; i++) {
-			for (int j = left; j <= right; j++) {
-				Coord coord;
-
-				coord.x = i;
-				coord.y = j;
-
-				std::set<Coord>::iterator found = waypointNodes_.find(coord);
-
-				if (found != waypointNodes_.end()) {
-					waypointNodes_.erase(found);
-				}
-			}
-		}
+		delNode(x, y);
 	}
 }
 
@@ -486,9 +466,38 @@ bool Drawing::addNode(int x, int y)
 		return false;
 	}
 
+	std::cout << "adding node: " << x << '/' << y << '\n';
 	waypointNodes_.insert(coord);
 
 	return true;
+}
+
+bool Drawing::delNode(int x, int y)
+{
+	int left = std::max(0, x - ROBOT_DIAMETER / 2);
+	int right = std::min(static_cast<int>(textureWidth_) - 1, x + ROBOT_DIAMETER / 2);
+	int bottom = std::max(0, y - ROBOT_DIAMETER / 2);
+	int top = std::min(static_cast<int>(textureHeight_) - 1, y + ROBOT_DIAMETER / 2);
+	bool deleted = false;
+
+	for (int i = bottom; i <= top; i++) {
+		for (int j = left; j <= right; j++) {
+			Coord coord;
+
+			coord.x = j;
+			coord.y = textureHeight_ - 1 - i;
+
+			std::set<Coord>::iterator found = waypointNodes_.find(coord);
+
+			if (found != waypointNodes_.end()) {
+				std::cout << "deleting node: " << x << '/' << y << '\n';
+				waypointNodes_.erase(found);
+				deleted = true;
+			}
+		}
+	}
+
+	return deleted;
 }
 
 bool Drawing::Coord::operator<(Coord const &other) const
