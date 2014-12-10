@@ -1,0 +1,9 @@
+*.[oa]
+*.so
+/code/pylib/Makefile
+/code/pylib/moc_*.cpp
+/code/pylib/native.exp
+/code/pylib/native.pro
+/code/pylib/native.sip
+/code/pylib/sipnative*.cpp
+/code/pylib/sipAPInative.h
