@@ -1,10 +1,17 @@
 #ifndef DRAWING_H_INCLUDED
 #define DRAWING_H_INCLUDED
 
+#include "coord.h"
+
 #include <GL/gl.h>
 #include <IL/il.h>
 
+#include <map>
 #include <set>
+#include <vector>
+
+class RoomImage;
+class Texture;
 
 class Drawing
 {
@@ -40,28 +47,18 @@ private:
 	bool delNode(int x, int y);
 	void drawPoint(int x, int y);
 
-	struct Coord
-	{
-		int x;
-		int y;
-
-		bool operator<(Coord const &other) const;
-		bool operator==(Coord const &other) const;
-	};
-
-	GLuint texture_;
-	GLuint textureWidth_;
-	GLuint textureHeight_;
-	ILuint image_;
-	ILubyte *imageData_;
-	std::set<Coord> collideNodes_;
-	std::set<Coord> outsideNodes_;
-	std::set<Coord> waypointNodes_;
-	Coord startNode_;
-	Coord endNode_;
+	std::set<Coord2D> collideNodes_;
+	std::set<Coord2D> outsideNodes_;
+	std::set<Coord2D> waypointNodes_;
+	std::set<Coord2D> edges_;
+	std::map<Coord2D *, std::vector<Coord2D  *> > vertices_;
+	Coord2D startNode_;
+	Coord2D endNode_;
 	WaypointModification waypointModification_;
 	GLint viewport_[4];
 	GLuint circleVBO_;
+	RoomImage *image_;
+	Texture *texture_;
 };
 
 #endif // DRAWING_H_INCLUDED

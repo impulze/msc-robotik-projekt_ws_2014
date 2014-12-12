@@ -1,5 +1,7 @@
 #define GL_GLEXT_PROTOTYPES
-#include <drawing.h>
+#include "drawing.h"
+#include "roomimage.h"
+#include "texture.h"
 
 #include <GL/glu.h>
 #include <IL/ilu.h>
@@ -9,6 +11,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 #include <vector>
 
@@ -18,17 +21,10 @@
 
 #define ROBOT_DIAMETER 5
 
+#include "algo.h"
+
 namespace
 {
-
-	void throw_error_from_il_error()
-	{
-		ILenum ilError = ilGetError();
-
-		if (ilError != IL_NO_ERROR) {
-			throw std::runtime_error(iluErrorString(ilError));
-		}
-	}
 
 	void throw_error_from_gl_error()
 	{
@@ -40,22 +36,13 @@ namespace
 		}
 	}
 
-	bool isBlack(ILubyte *byte)
+	bool isBlack(ILubyte const *byte)
 	{
 		ILubyte red = byte[0];
 		ILubyte green = byte[1];
 		ILubyte blue = byte[2];
 
 		return red == 0 && green == 0 && blue == 0;
-	}
-
-	bool isWhite(ILubyte *byte)
-	{
-		ILubyte red = byte[0];
-		ILubyte green = byte[1];
-		ILubyte blue = byte[2];
-
-		return red == 255 && green == 255 && blue == 255;
 	}
 
 	long random_at_most(long max)
@@ -79,18 +66,11 @@ namespace
 	}
 }
 
-struct Coord
-{
-	int x;
-	int y;
-};
-
 Drawing::Drawing()
-	: waypointModification_(WaypointNoMod)
+	: waypointModification_(WaypointNoMod),
+	  image_(0),
+	  texture_(0)
 {
-	ilInit();
-	throw_error_from_il_error();
-
 	std::srand(std::time(0));
 }
 
@@ -102,108 +82,35 @@ Drawing::~Drawing()
 
 void Drawing::fromImage(const char *name)
 {
-	ILint width;
-	ILint height;
-
 	freeTexture();
-	ilDeleteImages(1, &image_);
 
-	ilGenImages(1, &image_);
+	image_ = new RoomImage(name);
 
-	try {
-		ilBindImage(image_);
-		ilLoad(IL_PNG, name);
-		throw_error_from_il_error();
-		ilConvertImage(IL_RGB, IL_UNSIGNED_BYTE);
-		throw_error_from_il_error();
-
-		imageData_ = ilGetData();
-		width = ilGetInteger(IL_IMAGE_WIDTH);
-		height = ilGetInteger(IL_IMAGE_HEIGHT);
-	} catch (...) {
-		ilDeleteImages(1, &image_);
-		throw;
+	if (image_->width() > static_cast<unsigned int>(std::numeric_limits<int>::max()) ||
+	    image_->height() > static_cast<unsigned int>(std::numeric_limits<int>::min())) {
+		delete image_;
+		throw std::runtime_error("OpenGL cannot draw this texture.");
 	}
 
 	try {
-		glGenTextures(1, &texture_);
-		textureWidth_ = static_cast<GLuint>(width);
-		textureHeight_ = static_cast<GLuint>(height);
-		glBindTexture(GL_TEXTURE_2D, texture_);
-		throw_error_from_gl_error();
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, textureWidth_, textureHeight_, 0, GL_RGB, GL_UNSIGNED_BYTE, imageData_);
-		throw_error_from_gl_error();
-		glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		texture_ = new Texture(*image_);
 	} catch (...) {
-		glDeleteTextures(1, &texture_);
-		ilDeleteImages(1, &image_);
+		delete texture_;
 		throw;
 	}
 
 	collideNodes_.clear();
 	outsideNodes_.clear();
-
-	for (int i = 0; i < static_cast<int>(textureHeight_); i++) {
-		for (int j = 0; j < static_cast<int>(textureWidth_); j++) {
-			ILubyte *b = imageData_ + (i * textureWidth_ + j) * 3;
-
-			if (isWhite(b)) {
-				Coord coord;
-				coord.x = j;
-				coord.y = textureHeight_ - 1 - i;
-				outsideNodes_.insert(coord);
-			}
-
-			if (isBlack(b)) {
-				Coord coord;
-				coord.x = j;
-				coord.y = textureHeight_ - 1 - i;
-				collideNodes_.insert(coord);
-			}
-		}
-	}
-}
-
-void Drawing::toImage(const char *name)
-{
-	std::vector<unsigned char> rawdata;
-	GLint x;
-	GLint y;
-
-	glBindTexture(GL_TEXTURE_2D, texture_);
-	throw_error_from_gl_error();
-	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &x);
-	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &y);
-	rawdata.resize(x * y * 3);
-	glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, &rawdata[0]);
-	throw_error_from_gl_error();
-
-	ILuint image;
-
-	try {
-		ilGenImages(1, &image);
-		ilBindImage(image);
-		ilTexImage(x, y, 1, 3, IL_RGB, IL_UNSIGNED_BYTE, &rawdata[0]);
-		throw_error_from_il_error();
-		ilEnable(IL_FILE_OVERWRITE);
-		ilSaveImage(name);
-		throw_error_from_il_error();
-		ilDeleteImages(1, &image);
-	} catch (...) {
-		ilDeleteImages(1, &image);
-		throw;
-	}
 }
 
 void Drawing::setNodes(int amount)
 {
 	waypointNodes_.clear();
+	image_->recreateConvexCCWRoomPolygons();
 
 	for (int i = 0; i < amount; i++) {
-		int randX = random_at_most(textureWidth_ - 1);
-		int randY = random_at_most(textureHeight_ - 1);
+		int randX = random_at_most(texture_->width() - 1);
+		int randY = random_at_most(texture_->height() - 1);
 
 		bool added = addNode(randX, randY);
 
@@ -223,7 +130,7 @@ void Drawing::mouseClick(int x, int y)
 {
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glOrtho(0, textureWidth_, 0, textureHeight_, -1.0f, 4.0f);
+	glOrtho(0, texture_->width(), 0, texture_->height(), -1.0f, 4.0f);
 	throw_error_from_gl_error();
 
 	glMatrixMode(GL_MODELVIEW);
@@ -259,7 +166,7 @@ void Drawing::mouseClick(int x, int y)
 			if (checkNode(x, y)) {
 				printf("Setting startpoint (%d/%d).\n", x, y);
 				startNode_.x = x;
-				startNode_.y = textureHeight_ - 1 - y;
+				startNode_.y = texture_->height() - 1 - y;
 			}
 
 			break;
@@ -268,7 +175,7 @@ void Drawing::mouseClick(int x, int y)
 			if (checkNode(x, y)) {
 				printf("Setting endpoint (%d/%d).\n", x, y);
 				endNode_.x = x;
-				endNode_.y = textureHeight_ - 1 - y;
+				endNode_.y = texture_->height() - 1 - y;
 			}
 
 			break;
@@ -278,9 +185,11 @@ void Drawing::mouseClick(int x, int y)
 	}
 }
 
+GLuint triangleVBO;
+
 void Drawing::initialize()
 {
-	fromImage("/home/impulze/Documents/example_room2.png");
+	fromImage("/home/impulze/Documents/example_room3.png");
 	glEnable(GL_DEPTH_TEST);
 
 	GLdouble vertices[(300 + 1) * 2];
@@ -310,26 +219,38 @@ void Drawing::initialize()
 		glDeleteBuffers(1, &circleVBO_);
 	}
 
+	{
+		GLdouble tVertices[6];
+		tVertices[0] = 0.0; tVertices[1] = 0.0;
+		tVertices[2] = 1.0; tVertices[2] = 0.0;
+		tVertices[3] = 0.5; tVertices[4] = 0.5;
+
+		glGenBuffersARB(1, &triangleVBO);
+		glBindBufferARB(GL_ARRAY_BUFFER_ARB, triangleVBO);
+		glBufferDataARB(GL_ARRAY_BUFFER_ARB, sizeof tVertices, tVertices, GL_STATIC_DRAW);
+		glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
+	}
+
 	while (true) {
-		int randX = random_at_most(textureWidth_ - 1);
-		int randY = random_at_most(textureHeight_ - 1);
+		int randX = random_at_most(texture_->width() - 1);
+		int randY = random_at_most(texture_->height() - 1);
 
 		if (checkNode(randX, randY)) {
 			printf("Setting startpoint (%d/%d).\n", randX, randY);
 			startNode_.x = randX;
-			startNode_.y = textureHeight_ - 1 - randY;
+			startNode_.y = texture_->height() - 1 - randY;
 			break;
 		}
 	}
 
 	while (true) {
-		int randX = random_at_most(textureWidth_ - 1);
-		int randY = random_at_most(textureHeight_ - 1);
+		int randX = random_at_most(texture_->width() - 1);
+		int randY = random_at_most(texture_->height() - 1);
 
 		if (checkNode(randX, randY)) {
 			printf("Setting endpoint (%d/%d).\n", randX, randY);
 			endNode_.x = randX;
-			endNode_.y = textureHeight_ - 1 - randY;
+			endNode_.y = texture_->height() - 1 - randY;
 			break;
 		}
 	}
@@ -337,7 +258,7 @@ void Drawing::initialize()
 
 void Drawing::paint()
 {
-	if (glIsTexture(texture_) != GL_TRUE) {
+	if (texture_ == 0) {
 		return;
 	}
 
@@ -350,7 +271,7 @@ void Drawing::paint()
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	// default projection: glOrtho(l=-1,r=1,b=-1,t=1,n=1,f=-1)
-	glOrtho(0, textureWidth_, 0, textureHeight_, -1.0f, 4.0f);
+	glOrtho(0, texture_->width(), 0, texture_->height(), -1.0f, 4.0f);
 	throw_error_from_gl_error();
 
 	glMatrixMode(GL_MODELVIEW);
@@ -365,16 +286,16 @@ void Drawing::paint()
 	// => swap y coordinates in glTexCoord2f
 
 	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, texture_);
+	texture_->bind();
 	glBegin(GL_POLYGON);
 	glTexCoord2i(0, 1);
 	glVertex2i(0, 0);
 	glTexCoord2i(0, 0);
-	glVertex2i(0, textureHeight_);
+	glVertex2i(0, texture_->height());
 	glTexCoord2i(1, 0);
-	glVertex2i(textureWidth_, textureHeight_);
+	glVertex2i(texture_->width(), texture_->height());
 	glTexCoord2i(1, 1);
-	glVertex2i(textureWidth_, 0);
+	glVertex2i(texture_->width(), 0);
 	glEnd();
 	glDisable(GL_TEXTURE_2D);
 
@@ -388,7 +309,7 @@ void Drawing::paint()
 	glColor3f(0.0f, 1.0f, 0.0f);
 	glBegin(GL_POINTS);
 
-	for (std::set<Coord>::const_iterator it = collideNodes_.begin(); it != collideNodes_.end(); it++) {
+	for (std::set<Coord2D>::const_iterator it = collideNodes_.begin(); it != collideNodes_.end(); it++) {
 		glVertex3i(it->x, it->y, 0.0f);
 	}
 
@@ -408,9 +329,34 @@ void Drawing::paint()
 
 	glColor3f(1.0f, 1.0f, 0.0f);
 
-	for (std::set<Coord>::const_iterator it = waypointNodes_.begin(); it != waypointNodes_.end(); it++) {
+	for (std::set<Coord2D>::const_iterator it = waypointNodes_.begin(); it != waypointNodes_.end(); it++) {
 		drawPoint(it->x, it->y);
 	}
+
+
+	RoomImage::ConvexCCWRoomPolygons const &convexCCWRoomPolygons = image_->convexCCWRoomPolygons();
+
+	glColor3f(0.5f, 0.8f, 1.0f);
+
+	glPushMatrix();
+	glLineWidth(2.0f);
+	//glEnable(GL_POINT_SMOOTH);
+	//glPointSize(3.0f);
+	for (RoomImage::ConvexCCWRoomPolygons::const_iterator it = convexCCWRoomPolygons.begin();
+	     it != convexCCWRoomPolygons.end();
+	     it++) {
+		glBegin(GL_LINE_LOOP);
+
+		for (std::size_t i = 0; i < it->size(); i++) {
+			unsigned int x = (*it)[i].x;
+			unsigned int y = texture_->height() - 1 - (*it)[i].y;
+			//printf("drawing at: %d/%d\n", x, y);
+			glVertex2i(x, y);
+		}
+
+		glEnd();
+	}
+	glPopMatrix();
 
 	glTranslatef(0.0f, 0.0f, 0.5f);
 	glColor3f(1.0f, 0.0f, 0.0f);
@@ -441,21 +387,24 @@ void Drawing::resize(int width, int height)
 
 void Drawing::freeTexture()
 {
-	if (glIsTexture(texture_) == GL_TRUE) {
-		glDeleteTextures(1, &texture_);
-	}
+	delete texture_;
+	delete image_;
+
+	image_ = 0;
+	texture_ = 0;
 }
 
 bool Drawing::checkSurrounding(int x, int y)
 {
+	unsigned char const *data = image_->data().data();
 	int left = std::max(0, x - ROBOT_DIAMETER / 2);
-	int right = std::min(static_cast<int>(textureWidth_) - 1, x + ROBOT_DIAMETER / 2);
+	int right = std::min(static_cast<int>(texture_->width()) - 1, x + ROBOT_DIAMETER / 2);
 	int bottom = std::max(0, y - ROBOT_DIAMETER / 2);
-	int top = std::min(static_cast<int>(textureHeight_) - 1, y + ROBOT_DIAMETER / 2);
+	int top = std::min(static_cast<int>(texture_->height()) - 1, y + ROBOT_DIAMETER / 2);
 
 	for (int i = bottom; i <= top; i++) {
 		for (int j = left; j <= right; j++) {
-			ILubyte *byte = imageData_ + (i * textureWidth_ + j) * 3;
+			ILubyte const *byte = data + (i * texture_->width() + j) * 3;
 
 			if (isBlack(byte)) {
 				return false;
@@ -468,7 +417,8 @@ bool Drawing::checkSurrounding(int x, int y)
 
 bool Drawing::checkNode(int x, int y)
 {
-	ILubyte *byte = imageData_ + (y * textureWidth_ + x) * 3;
+	unsigned char const *data = image_->data().data();
+	ILubyte const *byte = data + (y * texture_->width() + x) * 3;
 
 	if (isBlack(byte)) {
 		std::fprintf(stderr, "Point (%d/%d) collides with an object or wall.\n", x, y);
@@ -480,11 +430,11 @@ bool Drawing::checkNode(int x, int y)
 		return false;
 	}
 
-	Coord coord;
+	Coord2D coord;
 	coord.x = x;
-	coord.y = textureHeight_ - 1 - y;
+	coord.y = texture_->height() - 1 - y;
 
-	std::set<Coord>::iterator found = outsideNodes_.find(coord);
+	std::set<Coord2D>::iterator found = outsideNodes_.find(coord);
 
 	if (found != outsideNodes_.end()) {
 		std::fprintf(stderr, "Point (%d/%d) is outside of the room.\n", x, y);
@@ -508,6 +458,11 @@ bool Drawing::checkNode(int x, int y)
 		return false;
 	}
 
+	if (!image_->checkWaypoint(Coord2D(x, y))) {
+		std::fprintf(stderr, "Point (%d/%d) not in boundary.\n", x, y);
+		return false;
+	}
+
 	return true;
 }
 
@@ -515,10 +470,12 @@ bool Drawing::addNode(int x, int y)
 {
 	if (checkNode(x, y)) {
 		std::cout << "adding node: " << x << '/' << y << '\n';
-		Coord coord;
+		Coord2D coord;
 		coord.x = x;
-		coord.y = textureHeight_ - 1 - y;
+		coord.y = texture_->height() - 1 - y;
 		waypointNodes_.insert(coord);
+		image_->insertWaypoint(Coord2D(x, y));
+
 		return true;
 	}
 
@@ -528,23 +485,24 @@ bool Drawing::addNode(int x, int y)
 bool Drawing::delNode(int x, int y)
 {
 	int left = std::max(0, x - ROBOT_DIAMETER / 2);
-	int right = std::min(static_cast<int>(textureWidth_) - 1, x + ROBOT_DIAMETER / 2);
+	int right = std::min(static_cast<int>(texture_->width()) - 1, x + ROBOT_DIAMETER / 2);
 	int bottom = std::max(0, y - ROBOT_DIAMETER / 2);
-	int top = std::min(static_cast<int>(textureHeight_) - 1, y + ROBOT_DIAMETER / 2);
+	int top = std::min(static_cast<int>(texture_->height()) - 1, y + ROBOT_DIAMETER / 2);
 	bool deleted = false;
 
 	for (int i = bottom; i <= top; i++) {
 		for (int j = left; j <= right; j++) {
-			Coord coord;
+			Coord2D coord;
 
 			coord.x = j;
-			coord.y = textureHeight_ - 1 - i;
+			coord.y = texture_->height() - 1 - i;
 
-			std::set<Coord>::iterator found = waypointNodes_.find(coord);
+			std::set<Coord2D>::iterator found = waypointNodes_.find(coord);
 
 			if (found != waypointNodes_.end()) {
-				std::cout << "deleting node: " << x << '/' << y << '\n';
+				std::cout << "deleting node: " << j << '/' << i << '\n';
 				waypointNodes_.erase(found);
+				image_->removeWaypoint(Coord2D(j, i));
 				deleted = true;
 			}
 		}
@@ -557,9 +515,9 @@ void Drawing::drawPoint(int x, int y)
 {
 #if COLLISION_DETECTION
 		int left = std::max(0, x - ROBOT_DIAMETER / 2);
-		int right = std::min(static_cast<int>(textureWidth_) - 1, x + ROBOT_DIAMETER / 2);
+		int right = std::min(static_cast<int>(texture_->width()) - 1, x + ROBOT_DIAMETER / 2);
 		int bottom = std::max(0, y - ROBOT_DIAMETER / 2);
-		int top = std::min(static_cast<int>(textureHeight_) - 1, y + ROBOT_DIAMETER / 2);
+		int top = std::min(static_cast<int>(texture_->height()) - 1, y + ROBOT_DIAMETER / 2);
 
 		glRecti(left, bottom, right, top);
 #else
@@ -569,16 +527,7 @@ void Drawing::drawPoint(int x, int y)
 #endif
 }
 
-bool Drawing::Coord::operator<(Coord const &other) const
+void Drawing::toImage(const char *name)
 {
-	if (x != other.x) {
-		return x < other.x;
-	}
-
-	return y < other.y;
-}
-
-bool Drawing::Coord::operator==(Coord const &other) const
-{
-	return x == other.x && y == other.y;
+	return;
 }

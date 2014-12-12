@@ -145,8 +145,8 @@ class ModuleConfiguration(object):
         qmake = {'CONFIG': 'native'}
 
         qmake['QT'] = 'opengl widgets'
-        qmake['INCLUDEPATH'] = None # -Ifoo
-        qmake['LIBS'] = '-lIL -lILU -lGLU' # -Lfoo
+        qmake['INCLUDEPATH'] = 'triangle/include' #None # -Ifoo
+        qmake['LIBS'] = '-Ltriangle/lib -ldel -lIL -lILU -lGLU -lgmp -lCGAL' # -Lfoo
         qmake['DEFINES'] = None # -DFOO
 
         return qmake
@@ -1261,14 +1261,14 @@ macx {
     pro.write('HEADERS = sipAPI%s.h\n' % mname)
     # TODO: why do i have to add this?
     pro.write('HEADERS += drawwidget.h opengldrawwidget.h\n')
-    pro.write('SOURCES += drawwidget.cpp opengldrawwidget.cpp dijkstra.cpp\n')
+    pro.write('SOURCES += drawwidget.cpp opengldrawwidget.cpp dijkstra.cpp gl.cpp il.cpp image.cpp texture.cpp coord.cpp roomimage.cpp polygon.cpp\n')
     pro.write('HEADERS += drawing.h\n')
-    pro.write('SOURCES += drawing.cpp\n')
+    pro.write('SOURCES += drawing.cpp algo.cpp\n')
 
     for s in glob.glob('sip%s*.cpp' % module_config.name):
          pro.write('SOURCES += %s\n' % s)
 
-    pro.write('QMAKE_CXXFLAGS += -ggdb3\n')
+    pro.write('QMAKE_CXXFLAGS += -ggdb3 -frounding-math\n')
     pro.write('\n')
 
     pro.close()
