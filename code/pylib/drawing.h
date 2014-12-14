@@ -47,13 +47,6 @@ private:
 	bool delNode(int x, int y);
 	void drawPoint(int x, int y);
 
-	std::set<Coord2D> collideNodes_;
-	std::set<Coord2D> outsideNodes_;
-	std::set<Coord2D> waypointNodes_;
-	std::set<Coord2D> edges_;
-	std::map<Coord2D *, std::vector<Coord2D  *> > vertices_;
-	Coord2D startNode_;
-	Coord2D endNode_;
 	WaypointModification waypointModification_;
 	GLint viewport_[4];
 	GLuint circleVBO_;

@@ -25,3 +25,8 @@ bool Coord2D::operator==(Coord2D const &other) const
 {
 	return x == other.x && y == other.y;
 }
+
+bool Coord2D::operator!=(Coord2D const &other) const
+{
+	return !operator==(other);
+}

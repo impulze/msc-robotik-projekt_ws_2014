@@ -211,6 +211,10 @@ struct Room::RIMPL
 	unsigned int height;
 	unsigned char stride;
 	_CDT::CDT cdt;
+	std::vector<Polygon2D> convexCCWRoomPolygons;
+	std::set<Coord2D> waypoints;
+	Coord2D startpoint;
+	Coord2D endpoint;
 
 	bool isBlack(unsigned char const *bytes)
 	{
@@ -232,41 +236,11 @@ struct Room::RIMPL
 		return isWhite(bytes + (coord.y * width + coord.x) * stride);
 	}
 
-	std::vector<Coord2D> createNeighbours(Coord2D const &coord)
-	{
-		std::vector<Coord2D> neighbours;
-		bool addNorth = coord.y > 0;
-		bool addEast = coord.x < width - 1;
-		bool addSouth = coord.y < height - 1;
-		bool addWest = coord.x > 0;
-
-		if (addNorth) {
-			Coord2D north(coord.x, coord.y - 1);
-			neighbours.push_back(north);
-		}
-
-		if (addSouth) {
-			Coord2D south(coord.x, coord.y + 1);
-			neighbours.push_back(south);
-		}
-
-		if (addEast) {
-			Coord2D east(coord.x + 1, coord.y);
-			neighbours.push_back(east);
-		}
-
-		if (addWest) {
-			Coord2D west(coord.x - 1, coord.y);
-			neighbours.push_back(west);
-		}
-
-		return neighbours;
-	}
-
-	void createPolygons(std::vector<Polygon2D> &convexCCWRoomPolygons)
+	void createPolygons()
 	{
 		convexCCWRoomPolygons.clear();
 
+		// mark faces in/out of domain
 		_CDT::initializeID(cdt);
 		_CDT::discoverComponents(cdt);
 
@@ -289,15 +263,10 @@ struct Room::RIMPL
 		}
 	}
 
-	bool check(Coord2D const &coord)
+	bool inDomain(Coord2D const &coord)
 	{
-		cdt.insert(_CDT::Point_2(coord.x, coord.y));
-
-		_CDT::initializeID(cdt);
-		_CDT::discoverComponents(cdt);
-
-		_CDT::Vertex_handle vh;
-		bool in_domain = false;
+		_CDT::Vertex_handle vh = cdt.insert(_CDT::Point_2(coord.x, coord.y));
+		bool result = false;
 
 		for (_CDT::CDT::Finite_faces_iterator fit = cdt.finite_faces_begin();
 		     fit != cdt.finite_faces_end();
@@ -306,78 +275,193 @@ struct Room::RIMPL
 				_CDT::Point_2 p(coord.x, coord.y);
 
 				if (fit->vertex(i)->point() == p) {
-					vh = fit->vertex(i);
-
-					printf("vertex (%d/%d) found, finite: %d\n", coord.x, coord.y, !cdt.is_infinite(vh));
-
 					if (fit->is_in_domain()) {
-						in_domain = true;
+						result = true;
+						vh = fit->vertex(i);
+						break;
 					}
-
-					break;
 				}
 
-				if (vh != _CDT::Vertex_handle()) {
+				if (result) {
 					break;
 				}
 			}
 		}
 
-		assert(vh != _CDT::Vertex_handle());
-
-		// TODO: why?
-		//cdt.remove_incident_constraints(vh);
 		cdt.remove(vh);
 
 		_CDT::initializeID(cdt);
 		_CDT::discoverComponents(cdt);
-
-		return in_domain;
+		
+		return result;
 	}
 
-	void insert(Coord2D const &coord)
+	bool findCDTVertex(Coord2D const &coord, _CDT::Vertex_handle &vh, _CDT::Face_handle &fh)
 	{
-		cdt.insert(_CDT::Point_2(coord.x, coord.y));
-
-		_CDT::initializeID(cdt);
-		_CDT::discoverComponents(cdt);
-	}
-
-	void remove(Coord2D const &coord)
-	{
-		_CDT::Vertex_handle vh;
-		bool in_domain = false;
+		_CDT::Point_2 p(coord.x, coord.y);
 
 		for (_CDT::CDT::Finite_faces_iterator fit = cdt.finite_faces_begin();
 		     fit != cdt.finite_faces_end();
 		     ++fit) {
-
 			for (int i = 0; i < 3; i++) {
-				_CDT::Point_2 p = fit->vertex(i)->point();
-				Coord2D c(p.x(), p.y());
+				_CDT::Point_2 mp = fit->vertex(i)->point();
 
-				if (c == coord) {
+				//printf("searching (%d/%d) found (%g/%g)\n", coord.x, coord.y, mp.x(), mp.y());
+				if (fit->vertex(i)->point() == p) {
+					fh = fit;
 					vh = fit->vertex(i);
-					in_domain = fit->is_in_domain();
-					break;
+					return true;
 				}
 			}
-
-			if (vh != _CDT::Vertex_handle()) {
-				break;
-			}
 		}
 
-		if (vh != _CDT::Vertex_handle()) {
-			printf("point to be removed was found in CDT (in domain: %d)\n", in_domain);
-			cdt.remove(vh);
-
-			_CDT::initializeID(cdt);
-			_CDT::discoverComponents(cdt);
-		} else {
-			printf("point to be removed was NOT found in CDT\n");
-		}
+		return false;
 	}
+
+	bool insert(Coord2D const &coord)
+	{
+		_CDT::Vertex_handle vh;
+		_CDT::Face_handle fh;
+
+		if (std::find(waypoints.begin(), waypoints.end(), coord) != waypoints.end()) {
+			assert(findCDTVertex(coord, vh, fh));
+			std::fprintf(stderr, "Waypoint (%d/%d) already inserted, can't insert.\n", coord.x, coord.y);
+			return false;
+		}
+
+		assert(!findCDTVertex(coord, vh, fh));
+
+		if (!inDomain(coord)) {
+			std::fprintf(stderr, "Waypoint (%d/%d) outside domain.\n", coord.x, coord.y);
+			return false;
+		}
+
+		if (coord == startpoint || coord == endpoint) {
+			std::fprintf(stderr, "Waypoint (%d/%d) is startpoint or endpoint.\n", coord.x, coord.y);
+			return false;
+		}
+
+		waypoints.insert(coord);
+		_CDT::Vertex_handle vh2 = cdt.insert(_CDT::Point_2(coord.x, coord.y));
+
+		createPolygons();
+
+		return true;
+	}
+
+	bool remove(Coord2D const &coord)
+	{
+		_CDT::Vertex_handle vh;
+		_CDT::Face_handle fh;
+		std::set<Coord2D>::iterator waypointIterator = std::find(waypoints.begin(), waypoints.end(), coord);
+
+		if (waypointIterator == waypoints.end()) {
+			assert(!findCDTVertex(coord, vh, fh));
+			std::fprintf(stderr, "Waypoint (%d/%d) not inserted yet, can't remove.\n", coord.x, coord.y);
+			return false;
+		}
+
+		bool found = findCDTVertex(coord, vh, fh);
+
+		assert(found);
+		assert(fh->is_in_domain());
+
+		waypoints.erase(waypointIterator);
+		cdt.remove(vh);
+
+		createPolygons();
+
+		return true;
+	}
+
+	bool setStartpoint(Coord2D const &coord)
+	{
+		_CDT::Vertex_handle vh;
+		_CDT::Face_handle fh;
+
+		if (startpoint == coord) {
+			return true;
+		}
+
+		if (!inDomain(coord)) {
+			std::printf("Startpoint (%d/%d) outside domain.\n", coord.x, coord.y);
+			return false;
+		}
+
+		if (std::find(waypoints.begin(), waypoints.end(), coord) != waypoints.end()) {
+			std::fprintf(stderr, "Can't set startpoint (%d/%d), it's a waypoint.\n", coord.x, coord.y);
+			return false;
+		}
+
+		if (coord == endpoint) {
+			std::fprintf(stderr, "Can't set startpoint (%d/%d), it's the endpoint.\n", coord.x, coord.y);
+			return false;
+		}
+
+		printf("adding startpoint %d/%d\n", coord.x, coord.y);
+		printf("stp: %d/%d\n", startpoint.x, startpoint.y);
+		if (startpoint != Coord2D(0, 0)) {
+			printf("searching startpoint %d/%d\n", coord.x, coord.y);
+			bool found = findCDTVertex(startpoint, vh, fh);
+			assert(found);
+			cdt.remove(vh);
+		}
+
+		assert(!findCDTVertex(startpoint, vh, fh));
+
+		cdt.insert(_CDT::Point_2(coord.x, coord.y));
+		startpoint = coord;
+
+		createPolygons();
+
+		return true;
+	}
+
+	bool setEndpoint(Coord2D const &coord)
+	{
+		_CDT::Vertex_handle vh;
+		_CDT::Face_handle fh;
+
+		if (endpoint == coord) {
+			return true;
+		}
+
+		if (!inDomain(coord)) {
+			std::printf("Endpoint (%d/%d) outside domain.\n", coord.x, coord.y);
+			return false;
+		}
+
+		if (std::find(waypoints.begin(), waypoints.end(), coord) != waypoints.end()) {
+			std::fprintf(stderr, "Can't set endpoint (%d/%d), it's a waypoint.\n", coord.x, coord.y);
+			return false;
+		}
+
+		if (coord == startpoint) {
+			std::fprintf(stderr, "Can't set endpoint (%d/%d), it's the startpoint.\n", coord.x, coord.y);
+			return false;
+		}
+
+		printf("will add endpoint: (%d/%d)\n", coord.x, coord.y);
+
+		if (endpoint != Coord2D(0, 0)) {
+			bool found = findCDTVertex(endpoint, vh, fh);
+			assert(found);
+			cdt.remove(vh);
+		}
+
+		assert(!findCDTVertex(endpoint, vh, fh));
+
+		_CDT::Vertex_handle vh2 = cdt.insert(_CDT::Point_2(coord.x, coord.y));
+
+		endpoint = coord;
+		createPolygons();
+
+		printf("after inserting endpoint: %d\n", vh2 == cdt.all_vertices_end());
+		printf("and searching: %d\n", findCDTVertex(endpoint, vh, fh));
+
+		return true;
+	}
+
 };
 
 
@@ -409,31 +493,50 @@ RoomImage const &Room::image() const
 	return image_;
 }
 
-bool Room::checkWaypoint(Coord2D const &coord) const
+bool Room::setStartpoint(Coord2D const &coord)
 {
-	return p->check(coord);
+	return p->setStartpoint(coord);
 }
 
-void Room::insertWaypoint(Coord2D const &coord)
+Coord2D Room::getStartpoint() const
 {
-	p->insert(coord);
-	p->createPolygons(convexCCWRoomPolygons_);
+	return p->startpoint;
 }
 
-void Room::removeWaypoint(Coord2D const &coord)
+bool Room::setEndpoint(Coord2D const &coord)
 {
-	p->remove(coord);
-	p->createPolygons(convexCCWRoomPolygons_);
+	return p->setEndpoint(coord);
+}
+
+Coord2D Room::getEndpoint() const
+{
+	return p->endpoint;
+}
+
+bool Room::insertWaypoint(Coord2D const &coord)
+{
+	return p->insert(coord);
+}
+
+bool Room::removeWaypoint(Coord2D const &coord)
+{
+	return p->remove(coord);
+}
+
+std::set<Coord2D> const &Room::getWaypoints() const
+{
+	return p->waypoints;
 }
 
 std::vector<Polygon2D> const &Room::convexCCWRoomPolygons() const
 {
-	return convexCCWRoomPolygons_;
+	return p->convexCCWRoomPolygons;
 }
 
 void Room::recreateConvexCCWRoomPolygons()
 {
-	convexCCWRoomPolygons_.clear();
+	p->waypoints.clear();
+	p->convexCCWRoomPolygons.clear();
 	p->cdt.clear();
 
 	std::vector<Polygon2D> const &innerPolygons = image_.innerPolygons();
@@ -454,5 +557,5 @@ void Room::recreateConvexCCWRoomPolygons()
 		_CDT::insertPolyline(p->cdt, points.begin(), points.end());
 	}
 
-	p->createPolygons(convexCCWRoomPolygons_);
+	p->createPolygons();
 }

@@ -98,14 +98,10 @@ void Drawing::fromImage(const char *name)
 		delete texture_;
 		throw;
 	}
-
-	collideNodes_.clear();
-	outsideNodes_.clear();
 }
 
 void Drawing::setNodes(int amount)
 {
-	waypointNodes_.clear();
 	room_->recreateConvexCCWRoomPolygons();
 
 	for (int i = 0; i < amount; i++) {
@@ -163,21 +159,11 @@ void Drawing::mouseClick(int x, int y)
 			break;
 
 		case WaypointStart:
-			if (checkNode(x, y)) {
-				printf("Setting startpoint (%d/%d).\n", x, y);
-				startNode_.x = x;
-				startNode_.y = texture_->height() - 1 - y;
-			}
-
+			room_->setStartpoint(Coord2D(x, y));
 			break;
 
 		case WaypointEnd:
-			if (checkNode(x, y)) {
-				printf("Setting endpoint (%d/%d).\n", x, y);
-				endNode_.x = x;
-				endNode_.y = texture_->height() - 1 - y;
-			}
-
+			room_->setEndpoint(Coord2D(x, y));
 			break;
 
 		default:
@@ -235,10 +221,7 @@ void Drawing::initialize()
 		int randX = random_at_most(texture_->width() - 1);
 		int randY = random_at_most(texture_->height() - 1);
 
-		if (checkNode(randX, randY)) {
-			printf("Setting startpoint (%d/%d).\n", randX, randY);
-			startNode_.x = randX;
-			startNode_.y = texture_->height() - 1 - randY;
+		if (room_->setStartpoint(Coord2D(randX, randY))) {
 			break;
 		}
 	}
@@ -247,10 +230,7 @@ void Drawing::initialize()
 		int randX = random_at_most(texture_->width() - 1);
 		int randY = random_at_most(texture_->height() - 1);
 
-		if (checkNode(randX, randY)) {
-			printf("Setting endpoint (%d/%d).\n", randX, randY);
-			endNode_.x = randX;
-			endNode_.y = texture_->height() - 1 - randY;
+		if (room_->setEndpoint(Coord2D(randX, randY))) {
 			break;
 		}
 	}
@@ -301,23 +281,6 @@ void Drawing::paint()
 
 	glPopMatrix();
 
-#if COLLISION_CHECK
-	// Walls
-	glPushMatrix();
-	glTranslatef(0.0f, 0.0f, -3.0f);
-
-	glColor3f(0.0f, 1.0f, 0.0f);
-	glBegin(GL_POINTS);
-
-	for (std::set<Coord2D>::const_iterator it = collideNodes_.begin(); it != collideNodes_.end(); it++) {
-		glVertex3i(it->x, it->y, 0.0f);
-	}
-
-	glEnd();
-
-	glPopMatrix();
-#endif
-
 	// Waypoints
 	glPushMatrix();
 	glTranslatef(0.0f, 0.0f, -3.0f);
@@ -329,10 +292,11 @@ void Drawing::paint()
 
 	glColor3f(1.0f, 1.0f, 0.0f);
 
-	for (std::set<Coord2D>::const_iterator it = waypointNodes_.begin(); it != waypointNodes_.end(); it++) {
+	std::set<Coord2D> const &waypoints = room_->getWaypoints();
+
+	for (std::set<Coord2D>::const_iterator it = waypoints.begin(); it != waypoints.end(); it++) {
 		drawPoint(it->x, it->y);
 	}
-
 
 	std::vector<Polygon2D> const &convexCCWRoomPolygons = room_->convexCCWRoomPolygons();
 
@@ -350,7 +314,6 @@ void Drawing::paint()
 		for (std::size_t i = 0; i < it->size(); i++) {
 			unsigned int x = (*it)[i].x;
 			unsigned int y = texture_->height() - 1 - (*it)[i].y;
-			//printf("drawing at: %d/%d\n", x, y);
 			glVertex2i(x, y);
 		}
 
@@ -360,11 +323,11 @@ void Drawing::paint()
 
 	glTranslatef(0.0f, 0.0f, 0.5f);
 	glColor3f(1.0f, 0.0f, 0.0f);
-	drawPoint(endNode_.x, endNode_.y);
+	drawPoint(room_->getEndpoint().x, room_->getEndpoint().y);
 
 	glTranslatef(0.0f, 0.0f, 0.5f);
 	glColor3f(0.0f, 1.0f, 0.0f);
-	drawPoint(startNode_.x, startNode_.y);
+	drawPoint(room_->getStartpoint().x, room_->getStartpoint().y);
 
 	glDisableClientState(GL_VERTEX_ARRAY);
 
@@ -415,75 +378,19 @@ bool Drawing::checkSurrounding(int x, int y)
 	return true;
 }
 
-bool Drawing::checkNode(int x, int y)
+bool Drawing::addNode(int x, int y)
 {
-	unsigned char const *data = room_->image().data().data();
-	ILubyte const *byte = data + (y * texture_->width() + x) * 3;
-
-	if (isBlack(byte)) {
-		std::fprintf(stderr, "Point (%d/%d) collides with an object or wall.\n", x, y);
-		return false;
-	}
-
-	if (!checkSurrounding(x, y)) {
-		std::fprintf(stderr, "Due to roboter diameter the point (%d/%d) would collide with an object or wall.\n", x, y);
-		return false;
-	}
-
-	Coord2D coord;
-	coord.x = x;
-	coord.y = texture_->height() - 1 - y;
-
-	std::set<Coord2D>::iterator found = outsideNodes_.find(coord);
-
-	if (found != outsideNodes_.end()) {
-		std::fprintf(stderr, "Point (%d/%d) is outside of the room.\n", x, y);
-		return false;
-	}
-
-	found = waypointNodes_.find(coord);
-
-	if (found != waypointNodes_.end()) {
-		std::fprintf(stderr, "Point (%d/%d) is a waypoint.\n", x, y);
-		return false;
-	}
-
-	if (startNode_ == coord) {
-		std::fprintf(stderr, "Point (%d/%d) is startpoint.\n", x, y);
-		return false;
-	}
-
-	if (endNode_ == coord) {
-		std::fprintf(stderr, "Point (%d/%d) is endpoint.\n", x, y);
-		return false;
-	}
-
-	if (!room_->checkWaypoint(Coord2D(x, y))) {
-		std::fprintf(stderr, "Point (%d/%d) not in boundary.\n", x, y);
+	if (!room_->insertWaypoint(Coord2D(x, y))) {
+		std::printf("Unable to insert waypoint (%d/%d), already present.\n", x, y);
 		return false;
 	}
 
 	return true;
 }
 
-bool Drawing::addNode(int x, int y)
-{
-	if (checkNode(x, y)) {
-		std::cout << "adding node: " << x << '/' << y << '\n';
-		Coord2D coord;
-		coord.x = x;
-		coord.y = texture_->height() - 1 - y;
-		waypointNodes_.insert(coord);
-		room_->insertWaypoint(Coord2D(x, y));
-
-		return true;
-	}
-
-	return false;
-}
-
 bool Drawing::delNode(int x, int y)
 {
+	// the user clicked near or directly into the waypoint
 	int left = std::max(0, x - ROBOT_DIAMETER / 2);
 	int right = std::min(static_cast<int>(texture_->width()) - 1, x + ROBOT_DIAMETER / 2);
 	int bottom = std::max(0, y - ROBOT_DIAMETER / 2);
@@ -492,20 +399,21 @@ bool Drawing::delNode(int x, int y)
 
 	for (int i = bottom; i <= top; i++) {
 		for (int j = left; j <= right; j++) {
-			Coord2D coord;
+			Coord2D coord(j, i);
 
-			coord.x = j;
-			coord.y = texture_->height() - 1 - i;
-
-			std::set<Coord2D>::iterator found = waypointNodes_.find(coord);
-
-			if (found != waypointNodes_.end()) {
-				std::cout << "deleting node: " << j << '/' << i << '\n';
-				waypointNodes_.erase(found);
-				room_->removeWaypoint(Coord2D(j, i));
+			if (room_->removeWaypoint(coord)) {
 				deleted = true;
+				break;
 			}
 		}
+
+		if (deleted) {
+			break;
+		}
+	}
+
+	if (!deleted) {
+		std::printf("Unable to remove waypoint (%d/%d), not present yet.\n", x, y);
 	}
 
 	return deleted;
@@ -521,9 +429,11 @@ void Drawing::drawPoint(int x, int y)
 
 		glRecti(left, bottom, right, top);
 #else
-		glTranslatef(x, y, 0.0f);
+		int offsetX = x;
+		int offsetY = texture_->height() - 1 - y;
+		glTranslatef(offsetX, offsetY, 0.0f);
 		glDrawArrays(GL_TRIANGLE_FAN, 0, 301);
-		glTranslatef(-x, -y, 0.0f);
+		glTranslatef(-offsetX, -offsetY, 0.0f);
 #endif
 }
 

@@ -4,6 +4,7 @@
 #include "coord.h"
 #include "roomimage.h"
 
+#include <set>
 #include <string>
 #include <vector>
 
@@ -14,9 +15,15 @@ public:
 
 	RoomImage const &image() const;
 
-	bool checkWaypoint(Coord2D const &coord) const;
-	void insertWaypoint(Coord2D const &coord);
-	void removeWaypoint(Coord2D const &coord);
+	bool setStartpoint(Coord2D const &coord);
+	Coord2D getStartpoint() const;
+
+	bool setEndpoint(Coord2D const &coord);
+	Coord2D getEndpoint() const;
+
+	bool insertWaypoint(Coord2D const &coord);
+	bool removeWaypoint(Coord2D const &coord);
+	std::set<Coord2D> const &getWaypoints() const;
 
 	std::vector<Polygon2D> const &convexCCWRoomPolygons() const;
 	void recreateConvexCCWRoomPolygons();
@@ -25,7 +32,6 @@ private:
 	RoomImage image_;
 	struct RIMPL;
 	RIMPL *p;
-	std::vector<Polygon2D> convexCCWRoomPolygons_;
 };
 
 #endif // ROB_ROOM_H_INCLUDED

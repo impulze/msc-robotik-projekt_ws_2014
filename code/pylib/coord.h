@@ -8,6 +8,7 @@ struct Coord2D
 
 	bool operator<(Coord2D const &other) const;
 	bool operator==(Coord2D const &other) const;
+	bool operator!=(Coord2D const &other) const;
 
 	unsigned int x;
 	unsigned int y;
