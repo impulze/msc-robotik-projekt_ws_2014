@@ -19,6 +19,7 @@ Texture::Texture(Image const &image)
 
 		switch (image.type()) {
 			case Image::IMAGE_TYPE_RGB:
+				glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 				format = GL_RGB;
 				break;
 
