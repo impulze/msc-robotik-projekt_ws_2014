@@ -145,8 +145,8 @@ class ModuleConfiguration(object):
         qmake = {'CONFIG': 'native'}
 
         qmake['QT'] = 'opengl widgets'
-        qmake['INCLUDEPATH'] = 'triangle/include' #None # -Ifoo
-        qmake['LIBS'] = '-Ltriangle/lib -ldel -lIL -lILU -lGLU -lgmp -lCGAL' # -Lfoo
+        qmake['INCLUDEPATH'] = None # -Ifoo
+        qmake['LIBS'] = '-lIL -lILU -lGLU -lCGAL -lgmp' # -Lfoo
         qmake['DEFINES'] = None # -DFOO
 
         return qmake
