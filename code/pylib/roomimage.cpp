@@ -4,6 +4,8 @@
 #include <map>
 #include <set>
 
+#include <stdio.h>
+
 namespace
 {
 	bool isBlack(unsigned char const *bytes)
@@ -16,12 +18,12 @@ namespace
 		return bytes[0] == 255 && bytes[1] == 255 && bytes[2] == 255;
 	}
 
-	std::vector<Coord2D> createNeighbours(Coord2D const &coord, unsigned int maxWidth, unsigned int maxHeight)
+	std::vector<Coord2D> createNeighbours(Coord2D const &coord, unsigned int width, unsigned int height)
 	{
 		std::vector<Coord2D> neighbours;
 		bool addNorth = coord.y > 0;
-		bool addEast = coord.x < maxWidth - 1;
-		bool addSouth = coord.y < maxHeight - 1;
+		bool addEast = coord.x < width - 1;
+		bool addSouth = coord.y < height - 1;
 		bool addWest = coord.x > 0;
 
 		if (addNorth) {
@@ -66,15 +68,42 @@ namespace
 
 		return neighbours;
 	}
+
+	std::set<Coord2D> checkNeighbourCollision(Coord2D const &coord, unsigned int width, unsigned int height, unsigned char distance)
+	{
+		// check a quad of (distance * 2 + 1)^2
+		std::set<Coord2D> checks;
+
+		for (unsigned char i = 0; i < distance * 2 + 1; i++) {
+			for (unsigned char j = 0; j < distance * 2 + 1; j++) {
+				// check if resulting pixel leaves left or top boundary
+				if (coord.y >= i && coord.x >= j && coord.y) {
+					// check if resulting pixel leaves right or bottom boundary
+					if (coord.y + i < height - 1 && coord.x + j < width - 1) {
+						checks.insert(coord);
+					}
+				}
+			}
+		}
+
+		return checks;
+	}
 }
 
 RoomImage::RoomImage(std::string const &filename)
 	: Image(filename)
 {
+}
+
+std::vector<Polygon2D> RoomImage::triangulate(unsigned char distance) const
+{
+	std::vector<Polygon2D> innerPolygons;
+
 	enum CoordType {
 		OUTSIDE,
 		WALL_OR_OBJECT_OUTLINE,
-		INSIDE
+		INSIDE,
+		COLLISION
 	};
 
 	typedef std::map<Coord2D, int> CoordTypesMap;
@@ -98,32 +127,65 @@ RoomImage::RoomImage(std::string const &filename)
 		}
 	}
 
+	// mark points as collision which can't be passed by the moving object
+	CoordTypesMap copyCoordTypes = coordTypes;
+
+	for (CoordTypesMap::const_iterator it = copyCoordTypes.begin(); it != copyCoordTypes.end(); it++) {
+		if (it->second != INSIDE) {
+			coordTypes[it->first] = it->second;
+			continue;
+		}
+
+		Coord2D coord(it->first.x, it->first.y);
+		std::set<Coord2D> checks = checkNeighbourCollision(coord, width(), height(), distance);
+
+		for (std::set<Coord2D>::const_iterator cit = checks.begin(); cit != checks.end(); cit++) {
+			unsigned char const *bytes = data().data() + (cit->y * width() + cit->x) * stride;
+
+			if (isBlack(bytes)) {
+				coordTypes[coord] = COLLISION;
+			}
+		}
+	}
+
+	int count = 0;
+
+	for (CoordTypesMap::const_iterator it = coordTypes.begin(); it != coordTypes.end(); it++) {
+		if (it->second == COLLISION) {
+			count++;
+		}
+	}
+
+	printf("%d collisions\n", count);
+	
 	std::set<Coord2D> insideCoords;
 
 	// first find all coordinates inside the room
 	for (CoordTypesMap::const_iterator it = coordTypes.begin(); it != coordTypes.end(); it++) {
-		if (it->second == INSIDE) {
-			std::vector<Coord2D> neighbours = createNeighbours(it->first, width(), height());
+		if (it->second != INSIDE) {
+			continue;
+		}
 
-			bool neighboursInside = true;
+		std::vector<Coord2D> neighbours = createNeighbours(it->first, width(), height());
 
-			// expand neighbours
-			for (std::vector<Coord2D>::const_iterator nit = neighbours.begin(); nit != neighbours.end(); nit++) {
-				// find the type of the neighbour coordinate
-				CoordTypesMap::const_iterator foundCoordType = coordTypes.find(*nit);
+		bool neighboursInside = true;
 
-				assert(foundCoordType != coordTypes.end());
+		// expand neighbours
+		for (std::vector<Coord2D>::const_iterator nit = neighbours.begin(); nit != neighbours.end(); nit++) {
+			// find the type of the neighbour coordinate
+			CoordTypesMap::const_iterator foundCoordType = coordTypes.find(*nit);
 
-				if (foundCoordType->second != INSIDE) {
-					neighboursInside = false;
-					break;
-				}
+			assert(foundCoordType != coordTypes.end());
+
+			if (foundCoordType->second != INSIDE) {
+				neighboursInside = false;
+				break;
 			}
+		}
 
-			if (!neighboursInside) {
-				// not all neighbours are inside, this one is an edge vertex
-				insideCoords.insert(it->first);
-			}
+		if (!neighboursInside) {
+			// not all neighbours are inside, this one is an edge vertex
+			insideCoords.insert(it->first);
 		}
 	}
 
@@ -131,7 +193,7 @@ RoomImage::RoomImage(std::string const &filename)
 		WEST,
 		SOUTH,
 		EAST,
-		NORTH,
+		NORTH
 	};
 
 	Polygon2D currentPolygon;
@@ -162,7 +224,6 @@ RoomImage::RoomImage(std::string const &filename)
 		if (hasEastNeighbours) {
 			insideNeighbours[2] = insideCoords.find(Coord2D(coord.x + 1, coord.y));
 		}
-
 
 		if (hasNorthNeighbours) {
 			insideNeighbours[3] = insideCoords.find(Coord2D(coord.x, coord.y - 1));
@@ -270,7 +331,7 @@ RoomImage::RoomImage(std::string const &filename)
 		}
 
 		if (newCoord == insideCoords.end()) {
-			innerPolygons_.push_back(currentPolygon);
+			innerPolygons.push_back(currentPolygon);
 			currentPolygon = Polygon2D();
 
 			if (insideCoords.empty()) {
@@ -282,9 +343,6 @@ RoomImage::RoomImage(std::string const &filename)
 			coord = *newCoord;
 		}
 	}
-}
 
-std::vector<Polygon2D> const &RoomImage::innerPolygons() const
-{
-	return innerPolygons_;
+	return innerPolygons;
 }

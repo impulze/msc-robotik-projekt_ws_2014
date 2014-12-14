@@ -1,13 +1,13 @@
 #include "room.h"
 
-
-
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Constrained_Delaunay_triangulation_2.h>
 #include <CGAL/Triangulation_conformer_2.h>
 #include <CGAL/Random.h>
 #include <CGAL/point_generators_2.h>
 #include <CGAL/Timer.h>
+
+#define ROBOT_DIAMETER 5
 
 namespace _CDT
 {
@@ -203,7 +203,6 @@ struct Room::RIMPL
 		  height(height),
 		  stride(stride)
 	{
-		printf("PIMPL: w: %d h: %d s: %d\n", width, height, stride);
 	}
 
 	unsigned char const *bytes;
@@ -263,37 +262,30 @@ struct Room::RIMPL
 		}
 	}
 
+	int _sign(Coord2D const &p0, _CDT::Point_2 const &p1, _CDT::Point_2 const &p2)
+	{
+		return (p0.x - p2.x()) * (p1.y() - p2.y()) - (p1.x() - p2.x()) * (p0.y - p2.y());
+	}
+
 	bool inDomain(Coord2D const &coord)
 	{
-		_CDT::Vertex_handle vh = cdt.insert(_CDT::Point_2(coord.x, coord.y));
-		bool result = false;
+		_CDT::Point_2 p(coord.x, coord.y);
 
 		for (_CDT::CDT::Finite_faces_iterator fit = cdt.finite_faces_begin();
 		     fit != cdt.finite_faces_end();
 		     ++fit) {
 			for (int i = 0; i < 3; i++) {
-				_CDT::Point_2 p(coord.x, coord.y);
+				if (fit->is_in_domain()) {
+					_CDT::CDT::Ctr::Triangulation::Triangle triangle = cdt.triangle(fit);
 
-				if (fit->vertex(i)->point() == p) {
-					if (fit->is_in_domain()) {
-						result = true;
-						vh = fit->vertex(i);
-						break;
+					if (triangle.has_on_positive_side(p)) {
+						return true;
 					}
-				}
-
-				if (result) {
-					break;
 				}
 			}
 		}
 
-		cdt.remove(vh);
-
-		_CDT::initializeID(cdt);
-		_CDT::discoverComponents(cdt);
-		
-		return result;
+		return false;
 	}
 
 	bool findCDTVertex(Coord2D const &coord, _CDT::Vertex_handle &vh, _CDT::Face_handle &fh)
@@ -304,9 +296,6 @@ struct Room::RIMPL
 		     fit != cdt.finite_faces_end();
 		     ++fit) {
 			for (int i = 0; i < 3; i++) {
-				_CDT::Point_2 mp = fit->vertex(i)->point();
-
-				//printf("searching (%d/%d) found (%g/%g)\n", coord.x, coord.y, mp.x(), mp.y());
 				if (fit->vertex(i)->point() == p) {
 					fh = fit;
 					vh = fit->vertex(i);
@@ -323,10 +312,14 @@ struct Room::RIMPL
 		_CDT::Vertex_handle vh;
 		_CDT::Face_handle fh;
 
+		if (coord == startpoint || coord == endpoint) {
+			std::fprintf(stderr, "Waypoint (%d/%d) is startpoint or endpoint, can't insert.\n", coord.x, coord.y);
+			return false;
+		}
+
 		if (std::find(waypoints.begin(), waypoints.end(), coord) != waypoints.end()) {
 			assert(findCDTVertex(coord, vh, fh));
-			std::fprintf(stderr, "Waypoint (%d/%d) already inserted, can't insert.\n", coord.x, coord.y);
-			return false;
+			return true;
 		}
 
 		assert(!findCDTVertex(coord, vh, fh));
@@ -336,13 +329,8 @@ struct Room::RIMPL
 			return false;
 		}
 
-		if (coord == startpoint || coord == endpoint) {
-			std::fprintf(stderr, "Waypoint (%d/%d) is startpoint or endpoint.\n", coord.x, coord.y);
-			return false;
-		}
-
 		waypoints.insert(coord);
-		_CDT::Vertex_handle vh2 = cdt.insert(_CDT::Point_2(coord.x, coord.y));
+		cdt.insert(_CDT::Point_2(coord.x, coord.y));
 
 		createPolygons();
 
@@ -353,6 +341,12 @@ struct Room::RIMPL
 	{
 		_CDT::Vertex_handle vh;
 		_CDT::Face_handle fh;
+
+		if (coord == startpoint || coord == endpoint) {
+			std::fprintf(stderr, "Waypoint (%d/%d) is startpoint or endpoint, can't remove.\n", coord.x, coord.y);
+			return false;
+		}
+
 		std::set<Coord2D>::iterator waypointIterator = std::find(waypoints.begin(), waypoints.end(), coord);
 
 		if (waypointIterator == waypoints.end()) {
@@ -398,10 +392,7 @@ struct Room::RIMPL
 			return false;
 		}
 
-		printf("adding startpoint %d/%d\n", coord.x, coord.y);
-		printf("stp: %d/%d\n", startpoint.x, startpoint.y);
 		if (startpoint != Coord2D(0, 0)) {
-			printf("searching startpoint %d/%d\n", coord.x, coord.y);
 			bool found = findCDTVertex(startpoint, vh, fh);
 			assert(found);
 			cdt.remove(vh);
@@ -441,8 +432,6 @@ struct Room::RIMPL
 			return false;
 		}
 
-		printf("will add endpoint: (%d/%d)\n", coord.x, coord.y);
-
 		if (endpoint != Coord2D(0, 0)) {
 			bool found = findCDTVertex(endpoint, vh, fh);
 			assert(found);
@@ -451,13 +440,10 @@ struct Room::RIMPL
 
 		assert(!findCDTVertex(endpoint, vh, fh));
 
-		_CDT::Vertex_handle vh2 = cdt.insert(_CDT::Point_2(coord.x, coord.y));
-
+		cdt.insert(_CDT::Point_2(coord.x, coord.y));
 		endpoint = coord;
-		createPolygons();
 
-		printf("after inserting endpoint: %d\n", vh2 == cdt.all_vertices_end());
-		printf("and searching: %d\n", findCDTVertex(endpoint, vh, fh));
+		createPolygons();
 
 		return true;
 	}
@@ -539,7 +525,7 @@ void Room::recreateConvexCCWRoomPolygons()
 	p->convexCCWRoomPolygons.clear();
 	p->cdt.clear();
 
-	std::vector<Polygon2D> const &innerPolygons = image_.innerPolygons();
+	std::vector<Polygon2D> const &innerPolygons = image_.triangulate(ROBOT_DIAMETER);
 
 	for (std::vector<Polygon2D>::const_iterator it = innerPolygons.begin();
 	     it != innerPolygons.end();

@@ -108,9 +108,7 @@ void Drawing::setNodes(int amount)
 		int randX = random_at_most(texture_->width() - 1);
 		int randY = random_at_most(texture_->height() - 1);
 
-		bool added = addNode(randX, randY);
-
-		if (!added) {
+		if (!room_->insertWaypoint(Coord2D(randX, randY))) {
 			i--;
 			continue;
 		}
@@ -151,7 +149,7 @@ void Drawing::mouseClick(int x, int y)
 
 	switch (waypointModification_) {
 		case WaypointAdd:
-			addNode(x, y);
+			room_->insertWaypoint(Coord2D(x, y));
 			break;
 
 		case WaypointDelete:
@@ -373,16 +371,6 @@ bool Drawing::checkSurrounding(int x, int y)
 				return false;
 			}
 		}
-	}
-
-	return true;
-}
-
-bool Drawing::addNode(int x, int y)
-{
-	if (!room_->insertWaypoint(Coord2D(x, y))) {
-		std::printf("Unable to insert waypoint (%d/%d), already present.\n", x, y);
-		return false;
 	}
 
 	return true;
