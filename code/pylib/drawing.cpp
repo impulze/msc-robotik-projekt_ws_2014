@@ -1,6 +1,6 @@
 #define GL_GLEXT_PROTOTYPES
 #include "drawing.h"
-#include "roomimage.h"
+#include "room.h"
 #include "texture.h"
 
 #include <GL/glu.h>
@@ -68,7 +68,7 @@ namespace
 
 Drawing::Drawing()
 	: waypointModification_(WaypointNoMod),
-	  image_(0),
+	  room_(0),
 	  texture_(0)
 {
 	std::srand(std::time(0));
@@ -84,16 +84,16 @@ void Drawing::fromImage(const char *name)
 {
 	freeTexture();
 
-	image_ = new RoomImage(name);
+	room_ = new Room(name);
 
-	if (image_->width() > static_cast<unsigned int>(std::numeric_limits<int>::max()) ||
-	    image_->height() > static_cast<unsigned int>(std::numeric_limits<int>::min())) {
-		delete image_;
+	if (room_->image().width() > static_cast<unsigned int>(std::numeric_limits<int>::max()) ||
+	    room_->image().height() > static_cast<unsigned int>(std::numeric_limits<int>::min())) {
+		delete room_;
 		throw std::runtime_error("OpenGL cannot draw this texture.");
 	}
 
 	try {
-		texture_ = new Texture(*image_);
+		texture_ = new Texture(room_->image());
 	} catch (...) {
 		delete texture_;
 		throw;
@@ -106,7 +106,7 @@ void Drawing::fromImage(const char *name)
 void Drawing::setNodes(int amount)
 {
 	waypointNodes_.clear();
-	image_->recreateConvexCCWRoomPolygons();
+	room_->recreateConvexCCWRoomPolygons();
 
 	for (int i = 0; i < amount; i++) {
 		int randX = random_at_most(texture_->width() - 1);
@@ -334,7 +334,7 @@ void Drawing::paint()
 	}
 
 
-	RoomImage::ConvexCCWRoomPolygons const &convexCCWRoomPolygons = image_->convexCCWRoomPolygons();
+	std::vector<Polygon2D> const &convexCCWRoomPolygons = room_->convexCCWRoomPolygons();
 
 	glColor3f(0.5f, 0.8f, 1.0f);
 
@@ -342,7 +342,7 @@ void Drawing::paint()
 	glLineWidth(2.0f);
 	//glEnable(GL_POINT_SMOOTH);
 	//glPointSize(3.0f);
-	for (RoomImage::ConvexCCWRoomPolygons::const_iterator it = convexCCWRoomPolygons.begin();
+	for (std::vector<Polygon2D>::const_iterator it = convexCCWRoomPolygons.begin();
 	     it != convexCCWRoomPolygons.end();
 	     it++) {
 		glBegin(GL_LINE_LOOP);
@@ -388,15 +388,15 @@ void Drawing::resize(int width, int height)
 void Drawing::freeTexture()
 {
 	delete texture_;
-	delete image_;
+	delete room_;
 
-	image_ = 0;
+	room_ = 0;
 	texture_ = 0;
 }
 
 bool Drawing::checkSurrounding(int x, int y)
 {
-	unsigned char const *data = image_->data().data();
+	unsigned char const *data = room_->image().data().data();
 	int left = std::max(0, x - ROBOT_DIAMETER / 2);
 	int right = std::min(static_cast<int>(texture_->width()) - 1, x + ROBOT_DIAMETER / 2);
 	int bottom = std::max(0, y - ROBOT_DIAMETER / 2);
@@ -417,7 +417,7 @@ bool Drawing::checkSurrounding(int x, int y)
 
 bool Drawing::checkNode(int x, int y)
 {
-	unsigned char const *data = image_->data().data();
+	unsigned char const *data = room_->image().data().data();
 	ILubyte const *byte = data + (y * texture_->width() + x) * 3;
 
 	if (isBlack(byte)) {
@@ -458,7 +458,7 @@ bool Drawing::checkNode(int x, int y)
 		return false;
 	}
 
-	if (!image_->checkWaypoint(Coord2D(x, y))) {
+	if (!room_->checkWaypoint(Coord2D(x, y))) {
 		std::fprintf(stderr, "Point (%d/%d) not in boundary.\n", x, y);
 		return false;
 	}
@@ -474,7 +474,7 @@ bool Drawing::addNode(int x, int y)
 		coord.x = x;
 		coord.y = texture_->height() - 1 - y;
 		waypointNodes_.insert(coord);
-		image_->insertWaypoint(Coord2D(x, y));
+		room_->insertWaypoint(Coord2D(x, y));
 
 		return true;
 	}
@@ -502,7 +502,7 @@ bool Drawing::delNode(int x, int y)
 			if (found != waypointNodes_.end()) {
 				std::cout << "deleting node: " << j << '/' << i << '\n';
 				waypointNodes_.erase(found);
-				image_->removeWaypoint(Coord2D(j, i));
+				room_->removeWaypoint(Coord2D(j, i));
 				deleted = true;
 			}
 		}

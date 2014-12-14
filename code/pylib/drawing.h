@@ -10,7 +10,7 @@
 #include <set>
 #include <vector>
 
-class RoomImage;
+class Room;
 class Texture;
 
 class Drawing
@@ -57,7 +57,7 @@ private:
 	WaypointModification waypointModification_;
 	GLint viewport_[4];
 	GLuint circleVBO_;
-	RoomImage *image_;
+	Room *room_;
 	Texture *texture_;
 };
 

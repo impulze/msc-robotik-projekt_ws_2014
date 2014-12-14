@@ -4,6 +4,7 @@
 #include "image.h"
 #include "polygon.h"
 
+#include <string>
 #include <vector>
 
 class RoomImage
@@ -12,20 +13,10 @@ class RoomImage
 public:
 	RoomImage(std::string const &filename);
 
-	typedef std::vector<ConvexPolygon2D> ConvexCCWRoomPolygons;
-
-	bool checkWaypoint(Coord2D const &coord) const;
-	void insertWaypoint(Coord2D const &coord);
-	void removeWaypoint(Coord2D const &coord);
-
-	ConvexCCWRoomPolygons const &convexCCWRoomPolygons() const;
-	void recreateConvexCCWRoomPolygons();
+	std::vector<Polygon2D> const &innerPolygons() const;
 
 private:
-	struct RIPIMPL;
-	RIPIMPL *p;
-	ConvexCCWRoomPolygons roomBoundaries_;
-	ConvexCCWRoomPolygons convexCCWRoomPolygons_;
+	std::vector<Polygon2D> innerPolygons_;
 };
 
 #endif // ROB_ROOMIMAGE_H_INCLUDED
