@@ -11,7 +11,7 @@
 class Room
 {
 public:
-	Room(std::string const &filename);
+	Room(std::string const &filename, unsigned char distance);
 
 	RoomImage const &image() const;
 
@@ -25,8 +25,9 @@ public:
 	bool removeWaypoint(Coord2D const &coord);
 	std::set<Coord2D> const &getWaypoints() const;
 
+	void triangulate(unsigned char distance);
+
 	std::vector<Polygon2D> const &convexCCWRoomPolygons() const;
-	void recreateConvexCCWRoomPolygons();
 
 private:
 	RoomImage image_;

@@ -36,15 +36,6 @@ namespace
 		}
 	}
 
-	bool isBlack(ILubyte const *byte)
-	{
-		ILubyte red = byte[0];
-		ILubyte green = byte[1];
-		ILubyte blue = byte[2];
-
-		return red == 0 && green == 0 && blue == 0;
-	}
-
 	long random_at_most(long max)
 	{
 		unsigned long num_bins = static_cast<unsigned long>(max) + 1;
@@ -84,7 +75,7 @@ void Drawing::fromImage(const char *name)
 {
 	freeTexture();
 
-	room_ = new Room(name);
+	room_ = new Room(name, ROBOT_DIAMETER);
 
 	if (room_->image().width() > static_cast<unsigned int>(std::numeric_limits<int>::max()) ||
 	    room_->image().height() > static_cast<unsigned int>(std::numeric_limits<int>::min())) {
@@ -102,7 +93,7 @@ void Drawing::fromImage(const char *name)
 
 void Drawing::setNodes(int amount)
 {
-	room_->recreateConvexCCWRoomPolygons();
+	room_->triangulate(ROBOT_DIAMETER);
 
 	for (int i = 0; i < amount; i++) {
 		int randX = random_at_most(texture_->width() - 1);
@@ -353,27 +344,6 @@ void Drawing::freeTexture()
 
 	room_ = 0;
 	texture_ = 0;
-}
-
-bool Drawing::checkSurrounding(int x, int y)
-{
-	unsigned char const *data = room_->image().data().data();
-	int left = std::max(0, x - ROBOT_DIAMETER / 2);
-	int right = std::min(static_cast<int>(texture_->width()) - 1, x + ROBOT_DIAMETER / 2);
-	int bottom = std::max(0, y - ROBOT_DIAMETER / 2);
-	int top = std::min(static_cast<int>(texture_->height()) - 1, y + ROBOT_DIAMETER / 2);
-
-	for (int i = bottom; i <= top; i++) {
-		for (int j = left; j <= right; j++) {
-			ILubyte const *byte = data + (i * texture_->width() + j) * 3;
-
-			if (isBlack(byte)) {
-				return false;
-			}
-		}
-	}
-
-	return true;
 }
 
 bool Drawing::delNode(int x, int y)

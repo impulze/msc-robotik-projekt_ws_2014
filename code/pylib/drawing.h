@@ -41,7 +41,6 @@ public:
 
 private:
 	void freeTexture();
-	bool checkSurrounding(int x, int y);
 	bool checkNode(int x, int y);
 	bool delNode(int x, int y);
 	void drawPoint(int x, int y);

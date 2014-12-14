@@ -74,13 +74,20 @@ namespace
 		// check a quad of (distance * 2 + 1)^2
 		std::set<Coord2D> checks;
 
-		for (unsigned char i = 0; i < distance * 2 + 1; i++) {
-			for (unsigned char j = 0; j < distance * 2 + 1; j++) {
-				// check if resulting pixel leaves left or top boundary
-				if (coord.y >= i && coord.x >= j && coord.y) {
-					// check if resulting pixel leaves right or bottom boundary
-					if (coord.y + i < height - 1 && coord.x + j < width - 1) {
-						checks.insert(coord);
+		long checkX = coord.x;
+		long checkY = coord.y;
+
+		for (unsigned char i = 0; i < distance; i++) {
+			for (unsigned char j = 0; j < distance; j++) {
+				checkX = coord.x;
+				checkY = coord.y;
+
+				checkX -= (distance / 2) - j;
+				checkY -= (distance / 2) - i;
+
+				if (checkX < width && checkY < height) {
+					if (checkX >= 0 && checkY >= 0) {
+						checks.insert(Coord2D(checkX, checkY));
 					}
 				}
 			}
@@ -148,16 +155,6 @@ std::vector<Polygon2D> RoomImage::triangulate(unsigned char distance) const
 		}
 	}
 
-	int count = 0;
-
-	for (CoordTypesMap::const_iterator it = coordTypes.begin(); it != coordTypes.end(); it++) {
-		if (it->second == COLLISION) {
-			count++;
-		}
-	}
-
-	printf("%d collisions\n", count);
-	
 	std::set<Coord2D> insideCoords;
 
 	// first find all coordinates inside the room

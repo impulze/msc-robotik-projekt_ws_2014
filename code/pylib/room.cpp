@@ -7,8 +7,6 @@
 #include <CGAL/point_generators_2.h>
 #include <CGAL/Timer.h>
 
-#define ROBOT_DIAMETER 5
-
 namespace _CDT
 {
 	template<class GeomTraits, class FaceBase>
@@ -467,11 +465,11 @@ struct Room::RIMPL
 
 
 
-Room::Room(std::string const &filename)
+Room::Room(std::string const &filename, unsigned char distance)
 	: image_(filename),
 	  p(new RIMPL(image_.data().data(), image_.width(), image_.height(), image_.type() == Image::IMAGE_TYPE_RGB ? 3 : 4))
 {
-	recreateConvexCCWRoomPolygons();
+	triangulate(distance);
 }
 
 RoomImage const &Room::image() const
@@ -514,18 +512,13 @@ std::set<Coord2D> const &Room::getWaypoints() const
 	return p->waypoints;
 }
 
-std::vector<Polygon2D> const &Room::convexCCWRoomPolygons() const
-{
-	return p->convexCCWRoomPolygons;
-}
-
-void Room::recreateConvexCCWRoomPolygons()
+void Room::triangulate(unsigned char distance)
 {
 	p->waypoints.clear();
 	p->convexCCWRoomPolygons.clear();
 	p->cdt.clear();
 
-	std::vector<Polygon2D> const &innerPolygons = image_.triangulate(ROBOT_DIAMETER);
+	std::vector<Polygon2D> const &innerPolygons = image_.triangulate(distance);
 
 	for (std::vector<Polygon2D>::const_iterator it = innerPolygons.begin();
 	     it != innerPolygons.end();
@@ -544,4 +537,9 @@ void Room::recreateConvexCCWRoomPolygons()
 	}
 
 	p->createPolygons();
+}
+
+std::vector<Polygon2D> const &Room::convexCCWRoomPolygons() const
+{
+	return p->convexCCWRoomPolygons;
 }
