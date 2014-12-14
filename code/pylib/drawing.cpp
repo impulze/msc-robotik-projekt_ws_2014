@@ -189,7 +189,7 @@ GLuint triangleVBO;
 
 void Drawing::initialize()
 {
-	fromImage("/home/impulze/Documents/example_room3.png");
+	fromImage("/home/impulze/Diagramm2.png");
 	glEnable(GL_DEPTH_TEST);
 
 	GLdouble vertices[(300 + 1) * 2];

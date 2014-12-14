@@ -8,9 +8,6 @@
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Constrained_Delaunay_triangulation_2.h>
-#include <CGAL/Delaunay_mesher_2.h>
-#include <CGAL/Delaunay_mesh_face_base_2.h>
-#include <CGAL/Delaunay_mesh_size_criteria_2.h>
 #include <CGAL/Triangulation_conformer_2.h>
 #include <CGAL/Random.h>
 #include <CGAL/point_generators_2.h>
@@ -112,7 +109,6 @@ namespace _CDT
 	typedef CGAL::Triangulation_data_structure_2<Vertex_base, FaceBase> TDS;
 	typedef CGAL::Exact_predicates_tag Itag;
 	typedef CGAL::Constrained_Delaunay_triangulation_2<K, TDS, Itag> CDT;
-	typedef CGAL::Delaunay_mesh_size_criteria_2<CDT> Criteria;
 	typedef CDT::Vertex_handle Vertex_handle;
 	typedef CDT::Face_handle Face_handle;
 	typedef CDT::All_faces_iterator All_faces_iterator;
