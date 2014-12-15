@@ -321,6 +321,7 @@ struct Room::RIMPL
 			return true;
 		}
 
+		// TOP PRIO TODO: find out why this sometimes failed when generating 2000+ waypoints
 		assert(!findCDTVertex(coord, vh, fh));
 
 		if (!inDomain(coord)) {
