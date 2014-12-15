@@ -6,6 +6,7 @@
 #include <GL/glu.h>
 #include <IL/ilu.h>
 
+#include <cassert>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -93,7 +94,16 @@ void Drawing::fromImage(const char *name)
 
 void Drawing::setNodes(int amount)
 {
+	Coord2D startpoint = room_->getStartpoint();
+	Coord2D endpoint = room_->getEndpoint();
+
 	room_->triangulate(ROBOT_DIAMETER);
+
+	bool result = room_->setStartpoint(startpoint);
+	assert(result);
+
+	result = room_->setEndpoint(endpoint);
+	assert(result);
 
 	for (int i = 0; i < amount; i++) {
 		int randX = random_at_most(texture_->width() - 1);
@@ -104,6 +114,8 @@ void Drawing::setNodes(int amount)
 			continue;
 		}
 	}
+
+	room_->calculatePath();
 }
 
 void Drawing::setWaypointModification(WaypointModification modification)
@@ -138,25 +150,31 @@ void Drawing::mouseClick(int x, int y)
 	x = posX;
 	y = posY;
 
+	bool changed = false;
+
 	switch (waypointModification_) {
 		case WaypointAdd:
-			room_->insertWaypoint(Coord2D(x, y));
+			changed = room_->insertWaypoint(Coord2D(x, y));
 			break;
 
 		case WaypointDelete:
-			delNode(x, y);
+			changed = delNode(x, y);
 			break;
 
 		case WaypointStart:
-			room_->setStartpoint(Coord2D(x, y));
+			changed = room_->setStartpoint(Coord2D(x, y));
 			break;
 
 		case WaypointEnd:
-			room_->setEndpoint(Coord2D(x, y));
+			changed = room_->setEndpoint(Coord2D(x, y));
 			break;
 
 		default:
 			break;
+	}
+
+	if (changed) {
+		room_->calculatePath();
 	}
 }
 
@@ -223,6 +241,8 @@ void Drawing::initialize()
 			break;
 		}
 	}
+
+	room_->calculatePath();
 }
 
 void Drawing::paint()
@@ -287,14 +307,10 @@ void Drawing::paint()
 		drawPoint(it->x, it->y);
 	}
 
-	std::vector<Polygon2D> const &triangulatedPolygons = room_->triangulatedPolygons();
-
 	glColor3f(0.5f, 0.8f, 1.0f);
-
 	glPushMatrix();
 	glLineWidth(2.0f);
-	//glEnable(GL_POINT_SMOOTH);
-	//glPointSize(3.0f);
+	std::vector<Polygon2D> const &triangulatedPolygons = room_->getTriangulatedPolygons();
 	for (std::vector<Polygon2D>::const_iterator it = triangulatedPolygons.begin();
 	     it != triangulatedPolygons.end();
 	     it++) {
@@ -308,6 +324,19 @@ void Drawing::paint()
 
 		glEnd();
 	}
+	glPopMatrix();
+
+	glColor3f(0.7f, 0.9f, 1.0f);
+	glPushMatrix();
+	glLineWidth(1.4f);
+	glBegin(GL_LINE_STRIP);
+	std::vector<Coord2D> const &calculatedPath = room_->getCalculatedPath();
+	for (std::vector<Coord2D>::const_iterator it = calculatedPath.begin();
+	     it != calculatedPath.end();
+	     it++) {
+		glVertex2i(it->x, texture_->height() - 1 - it->y);
+	}
+	glEnd();
 	glPopMatrix();
 
 	glTranslatef(0.0f, 0.0f, 0.5f);
@@ -353,28 +382,18 @@ bool Drawing::delNode(int x, int y)
 	int right = std::min(static_cast<int>(texture_->width()) - 1, x + ROBOT_DIAMETER / 2);
 	int bottom = std::max(0, y - ROBOT_DIAMETER / 2);
 	int top = std::min(static_cast<int>(texture_->height()) - 1, y + ROBOT_DIAMETER / 2);
-	bool deleted = false;
 
 	for (int i = bottom; i <= top; i++) {
 		for (int j = left; j <= right; j++) {
 			Coord2D coord(j, i);
 
 			if (room_->removeWaypoint(coord)) {
-				deleted = true;
-				break;
+				return true;
 			}
 		}
-
-		if (deleted) {
-			break;
-		}
 	}
 
-	if (!deleted) {
-		std::printf("Unable to remove waypoint (%d/%d), not present yet.\n", x, y);
-	}
-
-	return deleted;
+	return false;
 }
 
 void Drawing::drawPoint(int x, int y)

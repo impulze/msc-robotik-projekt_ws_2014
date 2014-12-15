@@ -209,6 +209,7 @@ struct Room::RIMPL
 	unsigned char stride;
 	_CDT::CDT cdt;
 	std::vector<Polygon2D> triangulatedPolygons;
+	std::vector<Coord2D> calculatedPath;
 	std::set<Coord2D> waypoints;
 	Coord2D startpoint;
 	Coord2D endpoint;
@@ -446,6 +447,14 @@ struct Room::RIMPL
 		return true;
 	}
 
+	void calculatePath()
+	{
+	}
+
+	std::vector<Coord2D> const &getCalculatedPath()
+	{
+		return calculatedPath;
+	}
 };
 
 
@@ -517,6 +526,8 @@ void Room::triangulate(unsigned char distance)
 	p->waypoints.clear();
 	p->triangulatedPolygons.clear();
 	p->cdt.clear();
+	p->startpoint = Coord2D();
+	p->endpoint = Coord2D();
 
 	std::vector<Polygon2D> const &innerPolygons = image_.triangulate(distance);
 
@@ -539,7 +550,17 @@ void Room::triangulate(unsigned char distance)
 	p->createPolygons();
 }
 
-std::vector<Polygon2D> const &Room::triangulatedPolygons() const
+std::vector<Polygon2D> const &Room::getTriangulatedPolygons() const
 {
 	return p->triangulatedPolygons;
+}
+
+void Room::calculatePath()
+{
+	p->calculatePath();
+}
+
+std::vector<Coord2D> const &Room::getCalculatedPath() const
+{
+	return p->getCalculatedPath();
 }
