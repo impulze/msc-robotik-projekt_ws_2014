@@ -4,6 +4,7 @@
 #include "coord.h"
 #include "roomimage.h"
 
+#include <map>
 #include <set>
 #include <string>
 #include <vector>
@@ -11,6 +12,8 @@
 class Room
 {
 public:
+	typedef std::map< Coord2D, std::set<Coord2D> > NeighboursMap;
+
 	Room(std::string const &filename, unsigned char distance);
 
 	RoomImage const &image() const;
@@ -30,6 +33,9 @@ public:
 
 	void calculatePath();
 	std::vector<Coord2D> const &getCalculatedPath() const;
+
+	void calculateNeighbours();
+	NeighboursMap const &getNeighbours() const;
 
 private:
 	RoomImage image_;

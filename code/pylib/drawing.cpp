@@ -326,10 +326,22 @@ void Drawing::paint()
 	}
 	glPopMatrix();
 
-	glColor3f(0.7f, 0.9f, 1.0f);
+	glTranslatef(0.0f, 0.0f, 0.5f);
+
+	glColor3f(0.3f, 0.5f, 0.8f);
 	glPushMatrix();
 	glLineWidth(1.4f);
-	glBegin(GL_LINE_STRIP);
+	glBegin(GL_LINES);
+	Room::NeighboursMap const &neighbours = room_->getNeighbours();
+	for (Room::NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
+		for (std::set<Coord2D>::const_iterator sit = it->second.begin(); sit != it->second.end(); sit++) {
+			glVertex2i(it->first.x, texture_->height() - 1 - it->first.y);
+			glVertex2i(sit->x, texture_->height() - 1 - sit->y);
+		}
+	}
+	glEnd();
+
+	glBegin(GL_LINES);
 	std::vector<Coord2D> const &calculatedPath = room_->getCalculatedPath();
 	for (std::vector<Coord2D>::const_iterator it = calculatedPath.begin();
 	     it != calculatedPath.end();

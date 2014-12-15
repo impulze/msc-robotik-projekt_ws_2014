@@ -210,6 +210,7 @@ struct Room::RIMPL
 	_CDT::CDT cdt;
 	std::vector<Polygon2D> triangulatedPolygons;
 	std::vector<Coord2D> calculatedPath;
+	NeighboursMap neighbours;
 	std::set<Coord2D> waypoints;
 	Coord2D startpoint;
 	Coord2D endpoint;
@@ -255,9 +256,9 @@ struct Room::RIMPL
 				polygon.push_back(Coord2D(p0.x(), p0.y()));
 				polygon.push_back(Coord2D(p1.x(), p1.y()));
 				polygon.push_back(Coord2D(p2.x(), p2.y()));
-			}
 
-			triangulatedPolygons.push_back(polygon);
+				triangulatedPolygons.push_back(polygon);
+			}
 		}
 	}
 
@@ -450,11 +451,45 @@ struct Room::RIMPL
 
 	void calculatePath()
 	{
+		calculateNeighbours();
 	}
 
-	std::vector<Coord2D> const &getCalculatedPath()
+	void calculateNeighbours()
 	{
-		return calculatedPath;
+		for (_CDT::CDT::Finite_vertices_iterator vi = cdt.finite_vertices_begin(); vi != cdt.finite_vertices_end(); vi++) {
+			_CDT::CDT::Edge_circulator ec = cdt.incident_edges(vi);
+			_CDT::CDT::Edge_circulator ec_done = ec;
+			Coord2D c = Coord2D(vi->point().x(), vi->point().y());
+			std::set<Coord2D> thisNeighbours;
+
+			do {
+				bool addNeighbour = false;
+
+				if (cdt.is_constrained(*ec)) {
+					addNeighbour = true;
+				} else if (!cdt.is_infinite(ec)) {
+					if (ec->first->is_in_domain()) {
+						addNeighbour = true;
+					}
+				}
+
+				if (addNeighbour) {
+					_CDT::CDT::Segment segment = cdt.segment(ec);
+					Coord2D c0(segment.point(0).x(), segment.point(0).y());
+					Coord2D c1(segment.point(1).x(), segment.point(1).y());
+
+					if (c0 == c) {
+						thisNeighbours.insert(c1);
+					} else {
+						thisNeighbours.insert(c0);
+					}
+				}
+
+				ec++;
+			} while (ec != ec_done);
+
+			neighbours[c] = thisNeighbours;
+		}
 	}
 };
 
@@ -563,5 +598,15 @@ void Room::calculatePath()
 
 std::vector<Coord2D> const &Room::getCalculatedPath() const
 {
-	return p->getCalculatedPath();
+	return p->calculatedPath;
+}
+
+void Room::calculateNeighbours()
+{
+	p->calculateNeighbours();
+}
+
+Room::NeighboursMap const &Room::getNeighbours() const
+{
+	return p->neighbours;
 }
