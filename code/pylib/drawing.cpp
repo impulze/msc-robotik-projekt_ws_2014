@@ -287,7 +287,7 @@ void Drawing::paint()
 		drawPoint(it->x, it->y);
 	}
 
-	std::vector<Polygon2D> const &convexCCWRoomPolygons = room_->convexCCWRoomPolygons();
+	std::vector<Polygon2D> const &triangulatedPolygons = room_->triangulatedPolygons();
 
 	glColor3f(0.5f, 0.8f, 1.0f);
 
@@ -295,8 +295,8 @@ void Drawing::paint()
 	glLineWidth(2.0f);
 	//glEnable(GL_POINT_SMOOTH);
 	//glPointSize(3.0f);
-	for (std::vector<Polygon2D>::const_iterator it = convexCCWRoomPolygons.begin();
-	     it != convexCCWRoomPolygons.end();
+	for (std::vector<Polygon2D>::const_iterator it = triangulatedPolygons.begin();
+	     it != triangulatedPolygons.end();
 	     it++) {
 		glBegin(GL_LINE_LOOP);
 

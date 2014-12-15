@@ -208,7 +208,7 @@ struct Room::RIMPL
 	unsigned int height;
 	unsigned char stride;
 	_CDT::CDT cdt;
-	std::vector<Polygon2D> convexCCWRoomPolygons;
+	std::vector<Polygon2D> triangulatedPolygons;
 	std::set<Coord2D> waypoints;
 	Coord2D startpoint;
 	Coord2D endpoint;
@@ -235,7 +235,7 @@ struct Room::RIMPL
 
 	void createPolygons()
 	{
-		convexCCWRoomPolygons.clear();
+		triangulatedPolygons.clear();
 
 		// mark faces in/out of domain
 		_CDT::initializeID(cdt);
@@ -256,7 +256,7 @@ struct Room::RIMPL
 				polygon.push_back(Coord2D(p2.x(), p2.y()));
 			}
 
-			convexCCWRoomPolygons.push_back(polygon);
+			triangulatedPolygons.push_back(polygon);
 		}
 	}
 
@@ -515,7 +515,7 @@ std::set<Coord2D> const &Room::getWaypoints() const
 void Room::triangulate(unsigned char distance)
 {
 	p->waypoints.clear();
-	p->convexCCWRoomPolygons.clear();
+	p->triangulatedPolygons.clear();
 	p->cdt.clear();
 
 	std::vector<Polygon2D> const &innerPolygons = image_.triangulate(distance);
@@ -539,7 +539,7 @@ void Room::triangulate(unsigned char distance)
 	p->createPolygons();
 }
 
-std::vector<Polygon2D> const &Room::convexCCWRoomPolygons() const
+std::vector<Polygon2D> const &Room::triangulatedPolygons() const
 {
-	return p->convexCCWRoomPolygons;
+	return p->triangulatedPolygons;
 }

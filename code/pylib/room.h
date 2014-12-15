@@ -26,8 +26,7 @@ public:
 	std::set<Coord2D> const &getWaypoints() const;
 
 	void triangulate(unsigned char distance);
-
-	std::vector<Polygon2D> const &convexCCWRoomPolygons() const;
+	std::vector<Polygon2D> const &triangulatedPolygons() const;
 
 private:
 	RoomImage image_;
