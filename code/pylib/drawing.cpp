@@ -265,15 +265,13 @@ void Drawing::paint()
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-
-	// Texture
-	glPushMatrix();
 	glTranslatef(0.0f, 0.0f, -3.5f);
 
 	// OpenGL origin = bottom-left
 	// DevIL origin = top-left
 	// => swap y coordinates in glTexCoord2f
 
+	// Texture
 	glEnable(GL_TEXTURE_2D);
 	texture_->bind();
 	glBegin(GL_POLYGON);
@@ -288,25 +286,21 @@ void Drawing::paint()
 	glEnd();
 	glDisable(GL_TEXTURE_2D);
 
-	glPopMatrix();
-
 	// Waypoints
-	glPushMatrix();
-	glTranslatef(0.0f, 0.0f, -3.0f);
-
 	glBindBuffer(GL_ARRAY_BUFFER, circleVBO_);
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(2, GL_DOUBLE, 0, 0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
+	glTranslatef(0.0f, 0.0f, 0.5f);
 	glColor3f(1.0f, 1.0f, 0.0f);
-
 	std::set<Coord2D> const &waypoints = room_->getWaypoints();
-
 	for (std::set<Coord2D>::const_iterator it = waypoints.begin(); it != waypoints.end(); it++) {
 		drawPoint(it->x, it->y);
 	}
 
+#if 0
+	glTranslatef(0.0f, 0.0f, 0.2f);
 	glColor3f(0.5f, 0.8f, 1.0f);
 	glPushMatrix();
 	glLineWidth(2.0f);
@@ -325,13 +319,13 @@ void Drawing::paint()
 		glEnd();
 	}
 	glPopMatrix();
+#endif
 
-	glTranslatef(0.0f, 0.0f, 0.5f);
-
+#if 0
+	glTranslatef(0.0f, 0.0f, 0.2f);
 	glColor3f(0.3f, 0.5f, 0.8f);
 	glPushMatrix();
 	glLineWidth(1.4f);
-#if 0
 	glBegin(GL_LINES);
 	Room::NeighboursMap const &neighbours = room_->getNeighbours();
 	for (Room::NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
@@ -341,14 +335,45 @@ void Drawing::paint()
 		}
 	}
 	glEnd();
+	glPopMatrix();
 #endif
 
+	glPushMatrix();
 	glBegin(GL_LINE_STRIP);
 	std::vector<Coord2D> const &calculatedPath = room_->getCalculatedPath();
-	for (std::vector<Coord2D>::const_iterator it = calculatedPath.begin();
-	     it != calculatedPath.end();
-	     it++) {
-		glVertex2i(it->x, texture_->height() - 1 - it->y);
+	for (int i = 0; i < calculatedPath.size() - 1; i++) {
+		Coord2D c1;
+		Coord2D c2;
+		Coord2D c3;
+		Coord2D c4;
+		Coord2D result;
+
+		if (i == 0) {
+			c1 = calculatedPath[i];
+			c2 = calculatedPath[i + 1];
+			c3 = calculatedPath[i + 2];
+			for (float t = 0.0f; t < 1.0f; t += 0.02f) {
+				result = catmullRomFirst(t, c1, c2, c3);
+				glVertex2f(result.x, texture_->height() - 1 - result.y);
+			}
+		} else if (i == calculatedPath.size() - 2) {
+			c1 = calculatedPath[i - 1];
+			c2 = calculatedPath[i];
+			c3 = calculatedPath[i + 1];
+			for (float t = 0.0f; t < 1.0f; t += 0.02f) {
+				result = catmullRomLast(t, c1, c2, c3);
+				glVertex2f(result.x, texture_->height() - 1 - result.y);
+			}
+		} else {
+			c1 = calculatedPath[i - 1];
+			c2 = calculatedPath[i];
+			c3 = calculatedPath[i + 1];
+			c4 = calculatedPath[i + 2];
+			for (float t = 0.0f; t < 1.0f; t += 0.02f) {
+				result = catmullRom(t, c1, c2, c3, c4);
+				glVertex2f(result.x, texture_->height() - 1 - result.y);
+			}
+		}
 	}
 	glEnd();
 	glPopMatrix();
@@ -362,8 +387,6 @@ void Drawing::paint()
 	drawPoint(room_->getStartpoint().x, room_->getStartpoint().y);
 
 	glDisableClientState(GL_VERTEX_ARRAY);
-
-	glPopMatrix();
 
 #if MEASURE
 	struct timeval sec; gettimeofday(&sec, NULL);
