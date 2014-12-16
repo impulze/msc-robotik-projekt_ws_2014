@@ -104,7 +104,7 @@ RoomImage::RoomImage(std::string const &filename)
 
 std::vector<Polygon2D> RoomImage::triangulate(unsigned char distance) const
 {
-	std::vector<Polygon2D> innerPolygons;
+	std::vector<Polygon2D> borderPolygons;
 
 	enum CoordType {
 		OUTSIDE,
@@ -328,7 +328,7 @@ std::vector<Polygon2D> RoomImage::triangulate(unsigned char distance) const
 		}
 
 		if (newCoord == insideCoords.end()) {
-			innerPolygons.push_back(currentPolygon);
+			borderPolygons.push_back(currentPolygon);
 			currentPolygon = Polygon2D();
 
 			if (insideCoords.empty()) {
@@ -341,5 +341,5 @@ std::vector<Polygon2D> RoomImage::triangulate(unsigned char distance) const
 		}
 	}
 
-	return innerPolygons;
+	return borderPolygons;
 }

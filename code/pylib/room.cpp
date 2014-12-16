@@ -631,10 +631,10 @@ void Room::triangulate(unsigned char distance)
 	p->startpoint = Coord2D();
 	p->endpoint = Coord2D();
 
-	std::vector<Polygon2D> const &innerPolygons = image_.triangulate(distance);
+	std::vector<Polygon2D> const &borderPolygons = image_.triangulate(distance);
 
-	for (std::vector<Polygon2D>::const_iterator it = innerPolygons.begin();
-	     it != innerPolygons.end();
+	for (std::vector<Polygon2D>::const_iterator it = borderPolygons.begin();
+	     it != borderPolygons.end();
 	     it++) {
 		std::list<_CDT::Point_2> points;
 
