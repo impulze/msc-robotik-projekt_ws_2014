@@ -299,7 +299,6 @@ void Drawing::paint()
 		drawPoint(it->x, it->y);
 	}
 
-#if 0
 	glTranslatef(0.0f, 0.0f, 0.2f);
 	glColor3f(0.5f, 0.8f, 1.0f);
 	glPushMatrix();
@@ -319,7 +318,6 @@ void Drawing::paint()
 		glEnd();
 	}
 	glPopMatrix();
-#endif
 
 #if 0
 	glTranslatef(0.0f, 0.0f, 0.2f);

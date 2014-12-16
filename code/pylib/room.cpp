@@ -523,9 +523,16 @@ struct Room::RIMPL
 		neighbours.clear();
 
 		for (_CDT::CDT::Finite_vertices_iterator vi = cdt.finite_vertices_begin(); vi != cdt.finite_vertices_end(); vi++) {
+			Coord2D c = Coord2D(vi->point().x(), vi->point().y());
+
+			if (waypoints.find(c) == waypoints.end()) {
+				if (c != startpoint && c != endpoint) {
+					continue;
+				}
+			}
+
 			_CDT::CDT::Edge_circulator ec = cdt.incident_edges(vi);
 			_CDT::CDT::Edge_circulator ec_done = ec;
-			Coord2D c = Coord2D(vi->point().x(), vi->point().y());
 			std::set<Coord2D> thisNeighbours;
 
 			do {
@@ -544,10 +551,19 @@ struct Room::RIMPL
 					Coord2D c0(segment.point(0).x(), segment.point(0).y());
 					Coord2D c1(segment.point(1).x(), segment.point(1).y());
 
+
 					if (c0 == c) {
-						thisNeighbours.insert(c1);
+						if (waypoints.find(c1) != waypoints.end() ||
+						    c1 == startpoint ||
+						    c1 == endpoint) {
+							thisNeighbours.insert(c1);
+						}
 					} else {
-						thisNeighbours.insert(c0);
+						if (waypoints.find(c0) != waypoints.end() ||
+						    c0 == startpoint ||
+						    c0 == endpoint) {
+							thisNeighbours.insert(c0);
+						}
 					}
 				}
 
