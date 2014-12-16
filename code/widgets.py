@@ -64,6 +64,9 @@ class CentralWidget(QtWidgets.QWidget):
 	pointButtonDel = None
 	pointButtonStart = None
 	pointButtonEnd = None
+	buttonShowTriangulation = None
+	buttonShowWaypoints = None
+	buttonShowPath = None
 
 	def __init__(self, parent):
 		super(CentralWidget, self).__init__(parent)
@@ -83,6 +86,12 @@ class CentralWidget(QtWidgets.QWidget):
 		self.pointButtonDel.stateChanged.connect(self.delWaypointChanged)
 		self.pointButtonStart.stateChanged.connect(self.setStartpointChanged)
 		self.pointButtonEnd.stateChanged.connect(self.setEndpointChanged)
+		self.buttonShowTriangulation = QtWidgets.QCheckBox(self.tr('Show triangulation'))
+		self.buttonShowWaypoints = QtWidgets.QCheckBox(self.tr('Show waypoints'))
+		self.buttonShowPath = QtWidgets.QCheckBox(self.tr('Show path'))
+		self.buttonShowTriangulation.stateChanged.connect(self.showTriangulationChanged)
+		self.buttonShowWaypoints.stateChanged.connect(self.showWaypointsChanged)
+		self.buttonShowPath.stateChanged.connect(self.showPathChanged)
 
 		amountLayout = QtWidgets.QVBoxLayout()
 		amountTopLayout = QtWidgets.QHBoxLayout()
@@ -97,11 +106,21 @@ class CentralWidget(QtWidgets.QWidget):
 		sideLayout.addWidget(self.pointButtonDel)
 		sideLayout.addWidget(self.pointButtonStart)
 		sideLayout.addWidget(self.pointButtonEnd)
+		line = QtWidgets.QFrame(self)
+		line.setFrameShape(QtWidgets.QFrame.HLine)
+		line.setFrameShadow(QtWidgets.QFrame.Sunken)
+		sideLayout.addWidget(line)
+		sideLayout.addWidget(self.buttonShowTriangulation)
+		sideLayout.addWidget(self.buttonShowWaypoints)
+		sideLayout.addWidget(self.buttonShowPath)
 		sideLayout.addItem(QtWidgets.QSpacerItem(1, 1, QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding))
 
 		mainLayout = QtWidgets.QHBoxLayout(self)
 		mainLayout.addLayout(sideLayout)
 		mainLayout.addWidget(self.drawWidget, 1)
+
+		self.buttonShowWaypoints.setCheckState(QtCore.Qt.Checked)
+		self.buttonShowPath.setCheckState(QtCore.Qt.Checked)
 
 	def uncheckButtons(self, buttons):
 		for button in buttons:
@@ -127,6 +146,15 @@ class CentralWidget(QtWidgets.QWidget):
 		if state == QtCore.Qt.Checked:
 			self.uncheckButtons([self.pointButtonAdd, self.pointButtonDel, self.pointButtonStart])
 			self.drawing.setWaypointModification(native.Drawing.WaypointEnd)
+
+	def showTriangulationChanged(self, state):
+		self.drawing.setOption(native.Drawing.ShowTriangulation, state == QtCore.Qt.Checked)
+
+	def showWaypointsChanged(self, state):
+		self.drawing.setOption(native.Drawing.ShowWaypoints, state == QtCore.Qt.Checked)
+
+	def showPathChanged(self, state):
+		self.drawing.setOption(native.Drawing.ShowPath, state == QtCore.Qt.Checked)
 
 	def amountOfNodesChanged(self):
 		lineEdit = self.sender()

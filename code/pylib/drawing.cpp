@@ -61,7 +61,10 @@ namespace
 Drawing::Drawing()
 	: waypointModification_(WaypointNoMod),
 	  room_(0),
-	  texture_(0)
+	  texture_(0),
+	  showTriangulation_(false),
+	  showWaypoints_(false),
+	  showPath_(false)
 {
 	std::srand(std::time(0));
 }
@@ -121,6 +124,23 @@ void Drawing::setNodes(int amount)
 void Drawing::setWaypointModification(WaypointModification modification)
 {
 	waypointModification_ = modification;
+}
+
+void Drawing::setOption(Option option, bool enabled)
+{
+	switch (option) {
+		case ShowTriangulation:
+			showTriangulation_ = enabled;
+			break;
+
+		case ShowWaypoints:
+			showWaypoints_ = enabled;
+			break;
+
+		case ShowPath:
+			showPath_ = enabled;
+			break;
+	}
 }
 
 void Drawing::mouseClick(int x, int y)
@@ -292,95 +312,85 @@ void Drawing::paint()
 	glVertexPointer(2, GL_DOUBLE, 0, 0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	glTranslatef(0.0f, 0.0f, 0.5f);
-	glColor3f(1.0f, 1.0f, 0.0f);
-	std::set<Coord2D> const &waypoints = room_->getWaypoints();
-	for (std::set<Coord2D>::const_iterator it = waypoints.begin(); it != waypoints.end(); it++) {
-		drawPoint(it->x, it->y);
+	if (showTriangulation_) {
+		glTranslatef(0.0f, 0.0f, 0.2f);
+		// light blue
+		glColor3f(0.5f, 0.8f, 1.0f);
+		glLineWidth(2.0f);
+		std::vector<Polygon2D> const &triangulatedPolygons = room_->getTriangulatedPolygons();
+		for (std::vector<Polygon2D>::const_iterator it = triangulatedPolygons.begin();
+		     it != triangulatedPolygons.end();
+		     it++) {
+			glBegin(GL_LINE_LOOP);
+
+			for (std::size_t i = 0; i < it->size(); i++) {
+				unsigned int x = (*it)[i].x;
+				unsigned int y = texture_->height() - 1 - (*it)[i].y;
+				glVertex2i(x, y);
+			}
+
+			glEnd();
+		}
 	}
 
-	glTranslatef(0.0f, 0.0f, 0.2f);
-	glColor3f(0.5f, 0.8f, 1.0f);
-	glPushMatrix();
-	glLineWidth(2.0f);
-	std::vector<Polygon2D> const &triangulatedPolygons = room_->getTriangulatedPolygons();
-	for (std::vector<Polygon2D>::const_iterator it = triangulatedPolygons.begin();
-	     it != triangulatedPolygons.end();
-	     it++) {
-		glBegin(GL_LINE_LOOP);
-
-		for (std::size_t i = 0; i < it->size(); i++) {
-			unsigned int x = (*it)[i].x;
-			unsigned int y = texture_->height() - 1 - (*it)[i].y;
-			glVertex2i(x, y);
+	if (showWaypoints_) {
+		glTranslatef(0.0f, 0.0f, 0.2f);
+		// yellow
+		glColor3f(1.0f, 1.0f, 0.0f);
+		std::set<Coord2D> const &waypoints = room_->getWaypoints();
+		for (std::set<Coord2D>::const_iterator it = waypoints.begin(); it != waypoints.end(); it++) {
+			drawPoint(it->x, it->y);
 		}
+	}
 
+	if (showPath_) {
+		glTranslatef(0.0f, 0.0f, 0.2f);
+		// dark-yellow
+		glColor3f(0.7f, 0.7f, 0.0f);
+		glBegin(GL_LINE_STRIP);
+		std::vector<Coord2D> const &calculatedPath = room_->getCalculatedPath();
+		for (int i = 0; i < calculatedPath.size() - 1; i++) {
+			Coord2D c1;
+			Coord2D c2;
+			Coord2D c3;
+			Coord2D c4;
+			Coord2D result;
+
+			if (i == 0) {
+				c1 = calculatedPath[i];
+				c2 = calculatedPath[i + 1];
+				c3 = calculatedPath[i + 2];
+				for (float t = 0.0f; t < 1.0f; t += 0.02f) {
+					result = catmullRomFirst(t, c1, c2, c3);
+					glVertex2f(result.x, texture_->height() - 1 - result.y);
+				}
+			} else if (i == calculatedPath.size() - 2) {
+				c1 = calculatedPath[i - 1];
+				c2 = calculatedPath[i];
+				c3 = calculatedPath[i + 1];
+				for (float t = 0.0f; t < 1.0f; t += 0.02f) {
+					result = catmullRomLast(t, c1, c2, c3);
+					glVertex2f(result.x, texture_->height() - 1 - result.y);
+				}
+			} else {
+				c1 = calculatedPath[i - 1];
+				c2 = calculatedPath[i];
+				c3 = calculatedPath[i + 1];
+				c4 = calculatedPath[i + 2];
+				for (float t = 0.0f; t < 1.0f; t += 0.02f) {
+					result = catmullRom(t, c1, c2, c3, c4);
+					glVertex2f(result.x, texture_->height() - 1 - result.y);
+				}
+			}
+		}
 		glEnd();
 	}
-	glPopMatrix();
 
-#if 0
 	glTranslatef(0.0f, 0.0f, 0.2f);
-	glColor3f(0.3f, 0.5f, 0.8f);
-	glPushMatrix();
-	glLineWidth(1.4f);
-	glBegin(GL_LINES);
-	Room::NeighboursMap const &neighbours = room_->getNeighbours();
-	for (Room::NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
-		for (std::set<Coord2D>::const_iterator sit = it->second.begin(); sit != it->second.end(); sit++) {
-			glVertex2i(it->first.x, texture_->height() - 1 - it->first.y);
-			glVertex2i(sit->x, texture_->height() - 1 - sit->y);
-		}
-	}
-	glEnd();
-	glPopMatrix();
-#endif
-
-	glPushMatrix();
-	glBegin(GL_LINE_STRIP);
-	std::vector<Coord2D> const &calculatedPath = room_->getCalculatedPath();
-	for (int i = 0; i < calculatedPath.size() - 1; i++) {
-		Coord2D c1;
-		Coord2D c2;
-		Coord2D c3;
-		Coord2D c4;
-		Coord2D result;
-
-		if (i == 0) {
-			c1 = calculatedPath[i];
-			c2 = calculatedPath[i + 1];
-			c3 = calculatedPath[i + 2];
-			for (float t = 0.0f; t < 1.0f; t += 0.02f) {
-				result = catmullRomFirst(t, c1, c2, c3);
-				glVertex2f(result.x, texture_->height() - 1 - result.y);
-			}
-		} else if (i == calculatedPath.size() - 2) {
-			c1 = calculatedPath[i - 1];
-			c2 = calculatedPath[i];
-			c3 = calculatedPath[i + 1];
-			for (float t = 0.0f; t < 1.0f; t += 0.02f) {
-				result = catmullRomLast(t, c1, c2, c3);
-				glVertex2f(result.x, texture_->height() - 1 - result.y);
-			}
-		} else {
-			c1 = calculatedPath[i - 1];
-			c2 = calculatedPath[i];
-			c3 = calculatedPath[i + 1];
-			c4 = calculatedPath[i + 2];
-			for (float t = 0.0f; t < 1.0f; t += 0.02f) {
-				result = catmullRom(t, c1, c2, c3, c4);
-				glVertex2f(result.x, texture_->height() - 1 - result.y);
-			}
-		}
-	}
-	glEnd();
-	glPopMatrix();
-
-	glTranslatef(0.0f, 0.0f, 0.5f);
 	glColor3f(1.0f, 0.0f, 0.0f);
 	drawPoint(room_->getEndpoint().x, room_->getEndpoint().y);
 
-	glTranslatef(0.0f, 0.0f, 0.5f);
+	glTranslatef(0.0f, 0.0f, 0.2f);
 	glColor3f(0.0f, 1.0f, 0.0f);
 	drawPoint(room_->getStartpoint().x, room_->getStartpoint().y);
 

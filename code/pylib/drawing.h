@@ -28,11 +28,19 @@ public:
 		WaypointNoMod
 	};
 
+	enum Option
+	{
+		ShowTriangulation,
+		ShowWaypoints,
+		ShowPath
+	};
+
 	void fromImage(const char *name);
 	void toImage(const char *name);
 
 	void setNodes(int amount);
 	void setWaypointModification(WaypointModification modification);
+	void setOption(Option option, bool enabled);
 	void mouseClick(int x, int y);
 
 	void initialize();
@@ -50,6 +58,9 @@ private:
 	GLuint circleVBO_;
 	Room *room_;
 	Texture *texture_;
+	bool showTriangulation_;
+	bool showWaypoints_;
+	bool showPath_;
 };
 
 #endif // DRAWING_H_INCLUDED

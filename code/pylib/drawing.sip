@@ -16,6 +16,13 @@ public:
 		WaypointNoMod
 	};
 
+	enum Option
+	{
+		ShowTriangulation,
+		ShowWaypoints,
+		ShowPath
+	};
+
 	Drawing();
 	~Drawing();
 
@@ -24,5 +31,6 @@ public:
 
 	void setNodes(int amount);
 	void setWaypointModification(WaypointModification modification);
+	void setOption(Option option, bool enabled);
 	void mouseClick(int x, int y);
 };
