@@ -1,3 +1,4 @@
+#include "dijkstra.h"
 #include "room.h"
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
@@ -6,6 +7,8 @@
 #include <CGAL/Random.h>
 #include <CGAL/point_generators_2.h>
 #include <CGAL/Timer.h>
+
+#include <cmath>
 
 namespace _CDT
 {
@@ -452,10 +455,73 @@ struct Room::RIMPL
 	void calculatePath()
 	{
 		calculateNeighbours();
+
+		calculatedPath.clear();
+
+		std::map<Coord2D, int> neighbourToIndexMap;
+
+		int i = 0;
+
+		for (Room::NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
+			Coord2D coord = it->first;
+
+			if (neighbourToIndexMap.find(coord) == neighbourToIndexMap.end()) {
+				neighbourToIndexMap[coord] = i++;
+			}
+		}
+
+		for (Room::NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
+			for (std::set<Coord2D>::const_iterator cit = it->second.begin(); cit != it->second.end(); cit++) {
+				Coord2D checkCoord = *cit;
+				assert(neighbourToIndexMap.find(checkCoord) != neighbourToIndexMap.end());
+			}
+		}
+
+		adjacency_list_t adjacency_list(neighbours.size());
+
+		for (Room::NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
+			Coord2D thisCoord = it->first;
+
+			for (std::set<Coord2D>::const_iterator cit = it->second.begin(); cit != it->second.end(); cit++) {
+				Coord2D thatCoord = *cit;
+
+				double xDistance = thatCoord.x - thisCoord.x;
+				double yDistance = thatCoord.y - thisCoord.y;
+				double distance = std::sqrt(xDistance * xDistance + yDistance * yDistance);
+
+				adjacency_list[neighbourToIndexMap[thisCoord]].push_back(neighbor(neighbourToIndexMap[thatCoord], distance));
+			}
+		}
+
+		assert(neighbourToIndexMap.find(startpoint) != neighbourToIndexMap.end());
+		assert(neighbourToIndexMap.find(endpoint) != neighbourToIndexMap.end());
+
+		std::vector<weight_t> min_distance;
+		std::vector<vertex_t> previous;
+		DijkstraComputePaths(neighbourToIndexMap[startpoint], adjacency_list, min_distance, previous);
+		std::list<vertex_t> path = DijkstraGetShortestPathTo(neighbourToIndexMap[endpoint], previous);
+
+		for (std::list<vertex_t>::const_iterator it = path.begin(); it != path.end(); it++) {
+			int thisIndex = *it;
+			std::map<Coord2D, int>::const_iterator found = neighbourToIndexMap.end();
+
+			for (std::map<Coord2D, int>::const_iterator nit = neighbourToIndexMap.begin(); nit != neighbourToIndexMap.end(); nit++) {
+				if (nit->second == thisIndex) {
+					found = nit;
+					break;
+				}
+			}
+
+			assert(found != neighbourToIndexMap.end());
+
+			calculatedPath.push_back(found->first);
+		}
 	}
 
 	void calculateNeighbours()
 	{
+		neighbours.clear();
+
 		for (_CDT::CDT::Finite_vertices_iterator vi = cdt.finite_vertices_begin(); vi != cdt.finite_vertices_end(); vi++) {
 			_CDT::CDT::Edge_circulator ec = cdt.incident_edges(vi);
 			_CDT::CDT::Edge_circulator ec_done = ec;

@@ -331,6 +331,7 @@ void Drawing::paint()
 	glColor3f(0.3f, 0.5f, 0.8f);
 	glPushMatrix();
 	glLineWidth(1.4f);
+#if 0
 	glBegin(GL_LINES);
 	Room::NeighboursMap const &neighbours = room_->getNeighbours();
 	for (Room::NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
@@ -340,8 +341,9 @@ void Drawing::paint()
 		}
 	}
 	glEnd();
+#endif
 
-	glBegin(GL_LINES);
+	glBegin(GL_LINE_STRIP);
 	std::vector<Coord2D> const &calculatedPath = room_->getCalculatedPath();
 	for (std::vector<Coord2D>::const_iterator it = calculatedPath.begin();
 	     it != calculatedPath.end();
