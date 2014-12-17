@@ -29,88 +29,81 @@ namespace
 
 namespace _CDT
 {
-	template<class GeomTraits, class FaceBase>
-	class Enriched_face_base_2
+	template <class GeomTraits, class FaceBase>
+	class CDTFaceBase
 		: public FaceBase
 	{
 	public:
-		typedef GeomTraits Geom_traits;
-		typedef typename FaceBase::Vertex_handle Vertex_handle;
-		typedef typename FaceBase::Face_handle Face_handle;
+		typedef typename FaceBase::Face_handle FaceHandle;
+		typedef typename FaceBase::Vertex_handle VertexHandle;
 
-		template<class TDS2>
+		// required for CGAL
+		template <class TDS2>
 		struct Rebind_TDS
 		{
 			typedef typename FaceBase::template Rebind_TDS<TDS2>::Other FaceBase2;
-			typedef Enriched_face_base_2<GeomTraits, FaceBase2> Other;
+			typedef CDTFaceBase<GeomTraits, FaceBase2> Other;
 		};
 
-		Enriched_face_base_2();
-		Enriched_face_base_2(Vertex_handle vh0, Vertex_handle vh1, Vertex_handle vh2);
-		Enriched_face_base_2(Vertex_handle vh0, Vertex_handle vh1, Vertex_handle vh2,
-		                     Face_handle fh0, Face_handle fh1, Face_handle fh2);
+		CDTFaceBase();
+		CDTFaceBase(VertexHandle vh0, VertexHandle vh1, VertexHandle vh2);
+		CDTFaceBase(VertexHandle vh0, VertexHandle vh1, VertexHandle vh2,
+		            FaceHandle fh0, FaceHandle fh1, FaceHandle fh2);
 
-		bool is_in_domain() const;
-		void set_in_domain(const bool set);
+		bool getInDomain() const;
+		void setInDomain(const bool set);
 
-		void set_counter(int i);
-		int counter() const;
-		int& counter();
+		int getCounter() const;
+		void setCounter(int i);
 
 	private:
 		int status_;
 	};
 
 	template<class GeomTraits, class FaceBase>
-	Enriched_face_base_2<GeomTraits, FaceBase>::Enriched_face_base_2()
+	CDTFaceBase<GeomTraits, FaceBase>::CDTFaceBase()
 		: FaceBase(),
 		  status_(-1)
 	{
 	}
 
 	template<class GeomTraits, class FaceBase>
-	Enriched_face_base_2<GeomTraits, FaceBase>::Enriched_face_base_2(Vertex_handle vh0, Vertex_handle vh1, Vertex_handle vh2)
+	CDTFaceBase<GeomTraits, FaceBase>::CDTFaceBase(VertexHandle vh0, VertexHandle vh1, VertexHandle vh2)
 		: FaceBase(vh0, vh1, vh2),
 		  status_(-1)
 	{
 	}
 
 	template<class GeomTraits, class FaceBase>
-	Enriched_face_base_2<GeomTraits, FaceBase>::Enriched_face_base_2(Vertex_handle vh0, Vertex_handle vh1, Vertex_handle vh2,
-	                                                                 Face_handle fh0, Face_handle fh1, Face_handle fh2)
+	CDTFaceBase<GeomTraits, FaceBase>::CDTFaceBase(VertexHandle vh0, VertexHandle vh1, VertexHandle vh2,
+	                                               FaceHandle fh0, FaceHandle fh1, FaceHandle fh2)
 		: FaceBase(vh0, vh1, vh2, fh0, fh1, fh2),
 		  status_(-1)
 	{
 	}
 
 	template<class GeomTraits, class FaceBase>
-	bool Enriched_face_base_2<GeomTraits, FaceBase>::is_in_domain() const
+	bool CDTFaceBase<GeomTraits, FaceBase>::getInDomain() const
 	{
 		return status_ % 2 == 1;
 	}
 
 	template<class GeomTraits, class FaceBase>
-	void Enriched_face_base_2<GeomTraits, FaceBase>::set_in_domain(const bool set)
+	void CDTFaceBase<GeomTraits, FaceBase>::setInDomain(const bool set)
 	{
 		status_ = set ? 1 : 0;
 	}
 
 	template<class GeomTraits, class FaceBase>
-	void Enriched_face_base_2<GeomTraits, FaceBase>::set_counter(int i)
+	int CDTFaceBase<GeomTraits, FaceBase>::getCounter() const
+	{
+		return status_;
+	}
+
+	template<class GeomTraits, class FaceBase>
+	void CDTFaceBase<GeomTraits, FaceBase>::setCounter(int i)
 	{
 		status_ = i;
-	}
-
-	template<class GeomTraits, class FaceBase>
-	int Enriched_face_base_2<GeomTraits, FaceBase>::counter() const
-	{
-		return status_;
-	}
-
-	template<class GeomTraits, class FaceBase>
-	int& Enriched_face_base_2<GeomTraits, FaceBase>::Enriched_face_base_2::counter()
-	{
-		return status_;
 	}
 
 	typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
@@ -119,7 +112,7 @@ namespace _CDT
 	typedef K::Iso_rectangle_2 Iso_rectangle_2;
 	typedef CGAL::Triangulation_vertex_base_2<K>  Vertex_base;
 	typedef CGAL::Constrained_triangulation_face_base_2<K> Face_base;
-	typedef Enriched_face_base_2<K, Face_base> FaceBase;
+	typedef CDTFaceBase<K, Face_base> FaceBase;
 	typedef CGAL::Triangulation_data_structure_2<Vertex_base, FaceBase> TDS;
 	typedef CGAL::Exact_predicates_tag Itag;
 	typedef CGAL::Constrained_Delaunay_triangulation_2<K, TDS, Itag> CDT;
@@ -129,7 +122,7 @@ namespace _CDT
 
 	void discoverComponent(const CDT &cdt, Face_handle start, int index, std::list<CDT::Edge>& border)
 	{
-		if (start->counter() != -1) {
+		if (start->getCounter() != -1) {
 			return;
 		}
 
@@ -140,15 +133,15 @@ namespace _CDT
 			Face_handle fh = queue.front();
 			queue.pop_front();
 
-			if (fh->counter() == -1) {
-				fh->counter() = index;
-				fh->set_in_domain(index % 2 == 1);
+			if (fh->getCounter() == -1) {
+				fh->setCounter(index);
+				fh->setInDomain(index % 2 == 1);
 
 				for (int i = 0; i < 3; i++) {
 					CDT::Edge edge(fh, i);
 					Face_handle neighbor = fh->neighbor(i);
 
-					if (neighbor->counter() == -1) {
+					if (neighbor->getCounter() == -1) {
 						if (cdt.is_constrained(edge)) {
 							border.push_back(edge);
 						} else {
@@ -175,8 +168,8 @@ namespace _CDT
 			border.pop_front();
 			Face_handle neigbor = edge.first->neighbor(edge.second);
 
-			if (neigbor->counter() == -1) {
-				discoverComponent(cdt, neigbor, edge.first->counter() + 1, border);
+			if (neigbor->getCounter() == -1) {
+				discoverComponent(cdt, neigbor, edge.first->getCounter() + 1, border);
 			}
 		}
 	}
@@ -208,7 +201,7 @@ namespace _CDT
 	void initializeID(const CDT& cdt)
 	{
 		for (All_faces_iterator it = cdt.all_faces_begin(); it != cdt.all_faces_end(); ++it) {
-			it->set_counter(-1);
+			it->setCounter(-1);
 		}
 	}
 }
@@ -260,7 +253,7 @@ struct Room::RoomImpl
 		     ++fit) {
 			Polygon2D polygon;
 
-			if (fit->is_in_domain()) {
+			if (fit->getInDomain()) {
 				_CDT::Point_2 p0 = fit->vertex(0)->point();
 				_CDT::Point_2 p1 = fit->vertex(1)->point();
 				_CDT::Point_2 p2 = fit->vertex(2)->point();
@@ -287,7 +280,7 @@ struct Room::RoomImpl
 		     fit != cdt.finite_faces_end();
 		     ++fit) {
 			for (int i = 0; i < 3; i++) {
-				if (fit->is_in_domain()) {
+				if (fit->getInDomain()) {
 					_CDT::CDT::Ctr::Triangulation::Triangle triangle = cdt.triangle(fit);
 
 					if (triangle.has_on_positive_side(p)) {
@@ -371,7 +364,7 @@ struct Room::RoomImpl
 		bool found = findCDTVertex(coord, vh, fh);
 
 		assert(found);
-		assert(fh->is_in_domain());
+		assert(fh->getInDomain());
 
 		waypoints.erase(waypointIterator);
 		cdt.remove(vh);
@@ -579,7 +572,7 @@ struct Room::RoomImpl
 				if (cdt.is_constrained(*ec)) {
 					addNeighbour = true;
 				} else if (!cdt.is_infinite(ec)) {
-					if (ec->first->is_in_domain()) {
+					if (ec->first->getInDomain()) {
 						addNeighbour = true;
 					}
 				}
