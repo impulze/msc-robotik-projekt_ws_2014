@@ -1,5 +1,5 @@
-#ifndef DIJKSTRA_H_INCLUDED
-#define DIJKSTRA_H_INCLUDED
+#ifndef ROB_DIJKSTRA_H_INCLUDED
+#define ROB_DIJKSTRA_H_INCLUDED
 
 #include <list>
 #include <vector>
@@ -23,4 +23,4 @@ void DijkstraComputePaths(vertex_t source,
 std::list<vertex_t> DijkstraGetShortestPathTo(
     vertex_t vertex, const std::vector<vertex_t> &previous);
 
-#endif // DIJKSTRA_H_INCLUDED
+#endif // ROB_DIJKSTRA_H_INCLUDED

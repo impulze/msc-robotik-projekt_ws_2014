@@ -1,5 +1,5 @@
-#ifndef DRAWWIDGET_H_INCLUDED
-#define DRAWWIDGET_H_INCLUDED
+#ifndef ROB_DRAWWIDGET_H_INCLUDED
+#define ROB_DRAWWIDGET_H_INCLUDED
 
 #include <QWidget>
 
@@ -19,4 +19,4 @@ private:
 	DrawWidget &operator=(const DrawWidget &other);
 };
 
-#endif // DRAWWIDGET_H_INCLUDED
+#endif // ROB_DRAWWIDGET_H_INCLUDED

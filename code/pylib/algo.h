@@ -1,5 +1,5 @@
-#ifndef ALGO_H_INCLUDED
-#define ALGO_H_INCLUDED
+#ifndef ROB_ALGO_H_INCLUDED
+#define ROB_ALGO_H_INCLUDED
 
 #include "coord.h"
 
@@ -60,4 +60,4 @@ inline Coord2D catmullRomLast(float t, Coord2D const &c1, Coord2D const &c2, Coo
 	return catmullRomImpl(matrix, t, c1, c2, c3, orientation);
 }
 
-#endif // ALGO_H_INCLUDED
+#endif // ROB_ALGO_H_INCLUDED

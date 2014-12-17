@@ -1,5 +1,5 @@
-#ifndef DRAWING_H_INCLUDED
-#define DRAWING_H_INCLUDED
+#ifndef ROB_DRAWING_H_INCLUDED
+#define ROB_DRAWING_H_INCLUDED
 
 class Room;
 class Texture;
@@ -42,4 +42,4 @@ private:
 	DrawingImpl *p;
 };
 
-#endif // DRAWING_H_INCLUDED
+#endif // ROB_DRAWING_H_INCLUDED
