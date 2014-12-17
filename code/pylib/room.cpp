@@ -4,10 +4,6 @@
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Constrained_Delaunay_triangulation_2.h>
-#include <CGAL/Triangulation_conformer_2.h>
-#include <CGAL/Random.h>
-#include <CGAL/point_generators_2.h>
-#include <CGAL/Timer.h>
 
 #include <cmath>
 
@@ -16,19 +12,6 @@ namespace
 	bool isBlack(unsigned char const *bytes);
 	bool isWhite(unsigned char const *bytes);
 
-	bool isBlack(unsigned char const *bytes)
-	{
-		return bytes[0] == 0 && bytes[1] == 0 && bytes[2] == 0;
-	}
-
-	bool isWhite(unsigned char const *bytes)
-	{
-		return bytes[0] == 255 && bytes[1] == 255 && bytes[2] == 255;
-	}
-}
-
-namespace _CDT
-{
 	template <class GeomTraits, class FaceBase>
 	class CDTFaceBase
 		: public FaceBase
@@ -60,21 +43,31 @@ namespace _CDT
 		int status_;
 	};
 
-	template<class GeomTraits, class FaceBase>
+	bool isBlack(unsigned char const *bytes)
+	{
+		return bytes[0] == 0 && bytes[1] == 0 && bytes[2] == 0;
+	}
+
+	bool isWhite(unsigned char const *bytes)
+	{
+		return bytes[0] == 255 && bytes[1] == 255 && bytes[2] == 255;
+	}
+
+	template <class GeomTraits, class FaceBase>
 	CDTFaceBase<GeomTraits, FaceBase>::CDTFaceBase()
 		: FaceBase(),
 		  status_(-1)
 	{
 	}
 
-	template<class GeomTraits, class FaceBase>
+	template <class GeomTraits, class FaceBase>
 	CDTFaceBase<GeomTraits, FaceBase>::CDTFaceBase(VertexHandle vh0, VertexHandle vh1, VertexHandle vh2)
 		: FaceBase(vh0, vh1, vh2),
 		  status_(-1)
 	{
 	}
 
-	template<class GeomTraits, class FaceBase>
+	template <class GeomTraits, class FaceBase>
 	CDTFaceBase<GeomTraits, FaceBase>::CDTFaceBase(VertexHandle vh0, VertexHandle vh1, VertexHandle vh2,
 	                                               FaceHandle fh0, FaceHandle fh1, FaceHandle fh2)
 		: FaceBase(vh0, vh1, vh2, fh0, fh1, fh2),
@@ -82,55 +75,52 @@ namespace _CDT
 	{
 	}
 
-	template<class GeomTraits, class FaceBase>
+	template <class GeomTraits, class FaceBase>
 	bool CDTFaceBase<GeomTraits, FaceBase>::getInDomain() const
 	{
 		return status_ % 2 == 1;
 	}
 
-	template<class GeomTraits, class FaceBase>
+	template <class GeomTraits, class FaceBase>
 	void CDTFaceBase<GeomTraits, FaceBase>::setInDomain(const bool set)
 	{
 		status_ = set ? 1 : 0;
 	}
 
-	template<class GeomTraits, class FaceBase>
+	template <class GeomTraits, class FaceBase>
 	int CDTFaceBase<GeomTraits, FaceBase>::getCounter() const
 	{
 		return status_;
 	}
 
-	template<class GeomTraits, class FaceBase>
+	template <class GeomTraits, class FaceBase>
 	void CDTFaceBase<GeomTraits, FaceBase>::setCounter(int i)
 	{
 		status_ = i;
 	}
+} // end of private namespace
 
-	typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
-	typedef K::Point_2 Point_2;
-	typedef K::Segment_2 Segment_2;
-	typedef K::Iso_rectangle_2 Iso_rectangle_2;
-	typedef CGAL::Triangulation_vertex_base_2<K>  Vertex_base;
-	typedef CGAL::Constrained_triangulation_face_base_2<K> Face_base;
-	typedef CDTFaceBase<K, Face_base> FaceBase;
-	typedef CGAL::Triangulation_data_structure_2<Vertex_base, FaceBase> TDS;
-	typedef CGAL::Exact_predicates_tag Itag;
-	typedef CGAL::Constrained_Delaunay_triangulation_2<K, TDS, Itag> CDT;
-	typedef CDT::Vertex_handle Vertex_handle;
-	typedef CDT::Face_handle Face_handle;
-	typedef CDT::All_faces_iterator All_faces_iterator;
 
-	void discoverComponent(const CDT &cdt, Face_handle start, int index, std::list<CDT::Edge>& border)
+typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
+typedef Kernel::Point_2 Point;
+typedef CGAL::Triangulation_vertex_base_2<Kernel> VertexBase;
+typedef CGAL::Constrained_triangulation_face_base_2<Kernel> CTFaceBase;
+typedef CDTFaceBase<Kernel, CTFaceBase> TDSFaceBase;
+typedef CGAL::Triangulation_data_structure_2<VertexBase, TDSFaceBase> TDS;
+typedef CGAL::Exact_predicates_tag CDTIntersectionTag;
+typedef CGAL::Constrained_Delaunay_triangulation_2<Kernel, TDS, CDTIntersectionTag> CDT;
+
+	void discoverComponent(const CDT &cdt, CDT::Face_handle start, int index, std::list<CDT::Edge>& border)
 	{
 		if (start->getCounter() != -1) {
 			return;
 		}
 
-		std::list<Face_handle> queue;
+		std::list<CDT::Face_handle> queue;
 		queue.push_back(start);
 
 		while (!queue.empty()) {
-			Face_handle fh = queue.front();
+			CDT::Face_handle fh = queue.front();
 			queue.pop_front();
 
 			if (fh->getCounter() == -1) {
@@ -139,7 +129,7 @@ namespace _CDT
 
 				for (int i = 0; i < 3; i++) {
 					CDT::Edge edge(fh, i);
-					Face_handle neighbor = fh->neighbor(i);
+					CDT::Face_handle neighbor = fh->neighbor(i);
 
 					if (neighbor->getCounter() == -1) {
 						if (cdt.is_constrained(edge)) {
@@ -166,7 +156,7 @@ namespace _CDT
 		while (!border.empty()) {
 			CDT::Edge edge = border.front();
 			border.pop_front();
-			Face_handle neigbor = edge.first->neighbor(edge.second);
+			CDT::Face_handle neigbor = edge.first->neighbor(edge.second);
 
 			if (neigbor->getCounter() == -1) {
 				discoverComponent(cdt, neigbor, edge.first->getCounter() + 1, border);
@@ -177,7 +167,7 @@ namespace _CDT
 	template<class Iterator>
 	void insertPolyline(CDT &cdt, Iterator begin, Iterator end)
 	{
-		Point_2 p, q;
+		CDT::Point p, q;
 		CDT::Vertex_handle vh, wh;
 		Iterator it = begin;
 
@@ -200,11 +190,10 @@ namespace _CDT
 
 	void initializeID(const CDT& cdt)
 	{
-		for (All_faces_iterator it = cdt.all_faces_begin(); it != cdt.all_faces_end(); ++it) {
+		for (CDT::All_faces_iterator it = cdt.all_faces_begin(); it != cdt.all_faces_end(); ++it) {
 			it->setCounter(-1);
 		}
 	}
-}
 
 struct Room::RoomImpl
 {
@@ -222,7 +211,7 @@ struct Room::RoomImpl
 	unsigned int width;
 	unsigned int height;
 	unsigned char stride;
-	_CDT::CDT cdt;
+	CDT cdt;
 	std::vector<Polygon2D> triangulatedPolygons;
 	std::vector<Coord2D> calculatedPath;
 	NeighboursMap neighbours;
@@ -245,18 +234,18 @@ struct Room::RoomImpl
 		triangulatedPolygons.clear();
 
 		// mark faces in/out of domain
-		_CDT::initializeID(cdt);
-		_CDT::discoverComponents(cdt);
+		initializeID(cdt);
+		discoverComponents(cdt);
 
-		for (_CDT::CDT::Finite_faces_iterator fit = cdt.finite_faces_begin();
+		for (CDT::Finite_faces_iterator fit = cdt.finite_faces_begin();
 		     fit != cdt.finite_faces_end();
 		     ++fit) {
 			Polygon2D polygon;
 
 			if (fit->getInDomain()) {
-				_CDT::Point_2 p0 = fit->vertex(0)->point();
-				_CDT::Point_2 p1 = fit->vertex(1)->point();
-				_CDT::Point_2 p2 = fit->vertex(2)->point();
+				CDT::Point p0 = fit->vertex(0)->point();
+				CDT::Point p1 = fit->vertex(1)->point();
+				CDT::Point p2 = fit->vertex(2)->point();
 
 				polygon.push_back(Coord2D(p0.x(), p0.y()));
 				polygon.push_back(Coord2D(p1.x(), p1.y()));
@@ -267,21 +256,21 @@ struct Room::RoomImpl
 		}
 	}
 
-	int _sign(Coord2D const &p0, _CDT::Point_2 const &p1, _CDT::Point_2 const &p2)
+	int _sign(Coord2D const &p0, CDT::Point const &p1, CDT::Point const &p2)
 	{
 		return (p0.x - p2.x()) * (p1.y() - p2.y()) - (p1.x() - p2.x()) * (p0.y - p2.y());
 	}
 
 	bool inDomain(Coord2D const &coord)
 	{
-		_CDT::Point_2 p(coord.x, coord.y);
+		CDT::Point p(coord.x, coord.y);
 
-		for (_CDT::CDT::Finite_faces_iterator fit = cdt.finite_faces_begin();
+		for (CDT::Finite_faces_iterator fit = cdt.finite_faces_begin();
 		     fit != cdt.finite_faces_end();
 		     ++fit) {
 			for (int i = 0; i < 3; i++) {
 				if (fit->getInDomain()) {
-					_CDT::CDT::Ctr::Triangulation::Triangle triangle = cdt.triangle(fit);
+					CDT::Ctr::Triangulation::Triangle triangle = cdt.triangle(fit);
 
 					if (triangle.has_on_positive_side(p)) {
 						return true;
@@ -293,11 +282,11 @@ struct Room::RoomImpl
 		return false;
 	}
 
-	bool findCDTVertex(Coord2D const &coord, _CDT::Vertex_handle &vh, _CDT::Face_handle &fh)
+	bool findCDTVertex(Coord2D const &coord, CDT::Vertex_handle &vh, CDT::Face_handle &fh)
 	{
-		_CDT::Point_2 p(coord.x, coord.y);
+		CDT::Point p(coord.x, coord.y);
 
-		for (_CDT::CDT::Finite_faces_iterator fit = cdt.finite_faces_begin();
+		for (CDT::Finite_faces_iterator fit = cdt.finite_faces_begin();
 		     fit != cdt.finite_faces_end();
 		     ++fit) {
 			for (int i = 0; i < 3; i++) {
@@ -314,8 +303,8 @@ struct Room::RoomImpl
 
 	bool insert(Coord2D const &coord)
 	{
-		_CDT::Vertex_handle vh;
-		_CDT::Face_handle fh;
+		CDT::Vertex_handle vh;
+		CDT::Face_handle fh;
 
 		if (coord == startpoint || coord == endpoint) {
 			std::fprintf(stderr, "Waypoint (%d/%d) is startpoint or endpoint, can't insert.\n", coord.x, coord.y);
@@ -336,7 +325,7 @@ struct Room::RoomImpl
 		}
 
 		waypoints.insert(coord);
-		cdt.insert(_CDT::Point_2(coord.x, coord.y));
+		cdt.insert(CDT::Point(coord.x, coord.y));
 
 		createPolygons();
 
@@ -345,8 +334,8 @@ struct Room::RoomImpl
 
 	bool remove(Coord2D const &coord)
 	{
-		_CDT::Vertex_handle vh;
-		_CDT::Face_handle fh;
+		CDT::Vertex_handle vh;
+		CDT::Face_handle fh;
 
 		if (coord == startpoint || coord == endpoint) {
 			std::fprintf(stderr, "Waypoint (%d/%d) is startpoint or endpoint, can't remove.\n", coord.x, coord.y);
@@ -387,17 +376,17 @@ struct Room::RoomImpl
 		for (std::vector<Polygon2D>::const_iterator it = borderPolygons.begin();
 		     it != borderPolygons.end();
 		     it++) {
-			std::list<_CDT::Point_2> points;
+			std::list<CDT::Point> points;
 
 			for (std::size_t i = 0; i < it->size(); i++) {
 				Coord2D coord = (*it)[i];
-				points.push_back(_CDT::Point_2(coord.x, coord.y));
+				points.push_back(CDT::Point(coord.x, coord.y));
 			}
 
 			Coord2D coord = (*it)[0];
-			points.push_back(_CDT::Point_2(coord.x, coord.y));
+			points.push_back(CDT::Point(coord.x, coord.y));
 		
-			_CDT::insertPolyline(cdt, points.begin(), points.end());
+			insertPolyline(cdt, points.begin(), points.end());
 		}
 
 		createPolygons();
@@ -405,8 +394,8 @@ struct Room::RoomImpl
 
 	bool setStartpoint(Coord2D const &coord)
 	{
-		_CDT::Vertex_handle vh;
-		_CDT::Face_handle fh;
+		CDT::Vertex_handle vh;
+		CDT::Face_handle fh;
 
 		if (startpoint == coord) {
 			return true;
@@ -435,7 +424,7 @@ struct Room::RoomImpl
 
 		assert(!findCDTVertex(startpoint, vh, fh));
 
-		cdt.insert(_CDT::Point_2(coord.x, coord.y));
+		cdt.insert(CDT::Point(coord.x, coord.y));
 		startpoint = coord;
 
 		createPolygons();
@@ -445,8 +434,8 @@ struct Room::RoomImpl
 
 	bool setEndpoint(Coord2D const &coord)
 	{
-		_CDT::Vertex_handle vh;
-		_CDT::Face_handle fh;
+		CDT::Vertex_handle vh;
+		CDT::Face_handle fh;
 
 		if (endpoint == coord) {
 			return true;
@@ -475,7 +464,7 @@ struct Room::RoomImpl
 
 		assert(!findCDTVertex(endpoint, vh, fh));
 
-		cdt.insert(_CDT::Point_2(coord.x, coord.y));
+		cdt.insert(CDT::Point(coord.x, coord.y));
 		endpoint = coord;
 
 		createPolygons();
@@ -553,7 +542,7 @@ struct Room::RoomImpl
 	{
 		neighbours.clear();
 
-		for (_CDT::CDT::Finite_vertices_iterator vi = cdt.finite_vertices_begin(); vi != cdt.finite_vertices_end(); vi++) {
+		for (CDT::Finite_vertices_iterator vi = cdt.finite_vertices_begin(); vi != cdt.finite_vertices_end(); vi++) {
 			Coord2D c = Coord2D(vi->point().x(), vi->point().y());
 
 			if (waypoints.find(c) == waypoints.end()) {
@@ -562,8 +551,8 @@ struct Room::RoomImpl
 				}
 			}
 
-			_CDT::CDT::Edge_circulator ec = cdt.incident_edges(vi);
-			_CDT::CDT::Edge_circulator ec_done = ec;
+			CDT::Edge_circulator ec = cdt.incident_edges(vi);
+			CDT::Edge_circulator ec_done = ec;
 			std::set<Coord2D> thisNeighbours;
 
 			do {
@@ -578,7 +567,7 @@ struct Room::RoomImpl
 				}
 
 				if (addNeighbour) {
-					_CDT::CDT::Segment segment = cdt.segment(ec);
+					CDT::Segment segment = cdt.segment(ec);
 					Coord2D c0(segment.point(0).x(), segment.point(0).y());
 					Coord2D c1(segment.point(1).x(), segment.point(1).y());
 
