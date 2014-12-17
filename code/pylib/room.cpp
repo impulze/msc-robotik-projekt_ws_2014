@@ -1,5 +1,6 @@
 #include "dijkstra.h"
 #include "room.h"
+#include "roomimage.h"
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Constrained_Delaunay_triangulation_2.h>
@@ -9,6 +10,22 @@
 #include <CGAL/Timer.h>
 
 #include <cmath>
+
+namespace
+{
+	bool isBlack(unsigned char const *bytes);
+	bool isWhite(unsigned char const *bytes);
+
+	bool isBlack(unsigned char const *bytes)
+	{
+		return bytes[0] == 0 && bytes[1] == 0 && bytes[2] == 0;
+	}
+
+	bool isWhite(unsigned char const *bytes)
+	{
+		return bytes[0] == 255 && bytes[1] == 255 && bytes[2] == 255;
+	}
+}
 
 namespace _CDT
 {
@@ -196,16 +213,18 @@ namespace _CDT
 	}
 }
 
-struct Room::RIMPL
+struct Room::RoomImpl
 {
-	RIMPL(unsigned char const *bytes, unsigned int width, unsigned int height, unsigned char stride)
-		: bytes(bytes),
-		  width(width),
-		  height(height),
-		  stride(stride)
+	RoomImpl(std::string const &filename)
+		: image(new RoomImage(filename))
 	{
+		bytes = image->data().data();
+		width = image->width();
+		height = image->height();
+		stride = image->type() == Image::IMAGE_TYPE_RGB ? 3 : 4;
 	}
 
+	RoomImage *image;
 	unsigned char const *bytes;
 	unsigned int width;
 	unsigned int height;
@@ -218,24 +237,14 @@ struct Room::RIMPL
 	Coord2D startpoint;
 	Coord2D endpoint;
 
-	bool isBlack(unsigned char const *bytes)
-	{
-		return bytes[0] == 0 && bytes[1] == 0 && bytes[2] == 0;
-	}
-
-	bool isWhite(unsigned char const *bytes)
-	{
-		return bytes[0] == 255 && bytes[1] == 255 && bytes[2] == 255;
-	}
-
 	bool isBlack(Coord2D const &coord)
 	{
-		return isBlack(bytes + (coord.y * width + coord.x) * stride);
+		return ::isBlack(bytes + (coord.y * width + coord.x) * stride);
 	}
 
 	bool isWhite(Coord2D const &coord)
 	{
-		return isWhite(bytes + (coord.y * width + coord.x) * stride);
+		return ::isWhite(bytes + (coord.y * width + coord.x) * stride);
 	}
 
 	void createPolygons()
@@ -370,6 +379,35 @@ struct Room::RIMPL
 		createPolygons();
 
 		return true;
+	}
+
+	void triangulate(unsigned char distance)
+	{
+		waypoints.clear();
+		triangulatedPolygons.clear();
+		cdt.clear();
+		startpoint = Coord2D();
+		endpoint = Coord2D();
+
+		std::vector<Polygon2D> const &borderPolygons = image->triangulate(distance);
+
+		for (std::vector<Polygon2D>::const_iterator it = borderPolygons.begin();
+		     it != borderPolygons.end();
+		     it++) {
+			std::list<_CDT::Point_2> points;
+
+			for (std::size_t i = 0; i < it->size(); i++) {
+				Coord2D coord = (*it)[i];
+				points.push_back(_CDT::Point_2(coord.x, coord.y));
+			}
+
+			Coord2D coord = (*it)[0];
+			points.push_back(_CDT::Point_2(coord.x, coord.y));
+		
+			_CDT::insertPolyline(cdt, points.begin(), points.end());
+		}
+
+		createPolygons();
 	}
 
 	bool setStartpoint(Coord2D const &coord)
@@ -593,15 +631,14 @@ struct Room::RIMPL
 
 
 Room::Room(std::string const &filename, unsigned char distance)
-	: image_(filename),
-	  p(new RIMPL(image_.data().data(), image_.width(), image_.height(), image_.type() == Image::IMAGE_TYPE_RGB ? 3 : 4))
+	: p(new RoomImpl(filename))
 {
 	triangulate(distance);
 }
 
 RoomImage const &Room::image() const
 {
-	return image_;
+	return *p->image;
 }
 
 bool Room::setStartpoint(Coord2D const &coord)
@@ -641,31 +678,7 @@ std::set<Coord2D> const &Room::getWaypoints() const
 
 void Room::triangulate(unsigned char distance)
 {
-	p->waypoints.clear();
-	p->triangulatedPolygons.clear();
-	p->cdt.clear();
-	p->startpoint = Coord2D();
-	p->endpoint = Coord2D();
-
-	std::vector<Polygon2D> const &borderPolygons = image_.triangulate(distance);
-
-	for (std::vector<Polygon2D>::const_iterator it = borderPolygons.begin();
-	     it != borderPolygons.end();
-	     it++) {
-		std::list<_CDT::Point_2> points;
-
-		for (std::size_t i = 0; i < it->size(); i++) {
-			Coord2D coord = (*it)[i];
-			points.push_back(_CDT::Point_2(coord.x, coord.y));
-		}
-
-		Coord2D coord = (*it)[0];
-		points.push_back(_CDT::Point_2(coord.x, coord.y));
-		
-		_CDT::insertPolyline(p->cdt, points.begin(), points.end());
-	}
-
-	p->createPolygons();
+	p->triangulate(distance);
 }
 
 std::vector<Polygon2D> const &Room::getTriangulatedPolygons() const

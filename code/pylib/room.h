@@ -2,12 +2,14 @@
 #define ROB_ROOM_H_INCLUDED
 
 #include "coord.h"
-#include "roomimage.h"
+#include "polygon.h"
 
 #include <map>
 #include <set>
 #include <string>
 #include <vector>
+
+class RoomImage;
 
 class Room
 {
@@ -38,9 +40,8 @@ public:
 	NeighboursMap const &getNeighbours() const;
 
 private:
-	RoomImage image_;
-	struct RIMPL;
-	RIMPL *p;
+	class RoomImpl;
+	RoomImpl *p;
 };
 
 #endif // ROB_ROOM_H_INCLUDED

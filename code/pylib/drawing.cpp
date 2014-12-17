@@ -4,6 +4,7 @@
 #include "coord.h"
 #include "drawing.h"
 #include "room.h"
+#include "roomimage.h"
 #include "texture.h"
 
 #include <GL/gl.h>
