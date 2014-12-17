@@ -9,7 +9,7 @@
 Image::Image(std::string const &filename)
 {
 	ilInit();
-	check_il_error();
+	checkILError();
 
 	ILuint handle;
 	ilGenImages(1, &handle);
@@ -17,7 +17,7 @@ Image::Image(std::string const &filename)
 	try {
 		ilBindImage(handle);
 		ilLoad(IL_PNG, filename.c_str());
-		check_il_error();
+		checkILError();
 
 		ILenum format;
 
@@ -38,7 +38,7 @@ Image::Image(std::string const &filename)
 
 		// possibly always convert and accept all formats?
 		//ilConvertImage(IL_RGB, IL_UNSIGNED_BYTE);
-		//check_il_error();
+		//checkILError();
 
 		ILubyte *data = ilGetData();
 		width_ = static_cast<unsigned int>(ilGetInteger(IL_IMAGE_WIDTH));

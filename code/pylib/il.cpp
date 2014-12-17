@@ -4,7 +4,7 @@
 
 #include <stdexcept>
 
-void check_il_error()
+void checkILError()
 {
 	ILenum ilError = ilGetError();
 
