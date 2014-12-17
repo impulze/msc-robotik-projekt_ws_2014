@@ -13,7 +13,7 @@ class RoomImage
 public:
 	RoomImage(std::string const &filename);
 
-	std::vector<Polygon2D> triangulate(unsigned char distance) const;
+	std::vector<Polygon2D> getBorderPolygons(unsigned char distance) const;
 };
 
 #endif // ROB_ROOMIMAGE_H_INCLUDED

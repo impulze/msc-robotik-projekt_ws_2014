@@ -102,7 +102,7 @@ RoomImage::RoomImage(std::string const &filename)
 {
 }
 
-std::vector<Polygon2D> RoomImage::triangulate(unsigned char distance) const
+std::vector<Polygon2D> RoomImage::getBorderPolygons(unsigned char distance) const
 {
 	std::vector<Polygon2D> borderPolygons;
 

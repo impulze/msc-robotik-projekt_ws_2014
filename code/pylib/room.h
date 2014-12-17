@@ -16,7 +16,7 @@ class Room
 public:
 	typedef std::map< Coord2D, std::set<Coord2D> > NeighboursMap;
 
-	Room(std::string const &filename, unsigned char distance);
+	Room(std::string const &filename);
 
 	RoomImage const &image() const;
 

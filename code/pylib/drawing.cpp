@@ -119,7 +119,7 @@ void Drawing::DrawingImpl::fromImage(const char *name)
 {
 	freeTexture();
 
-	room = new Room(name, ROBOT_DIAMETER);
+	room = new Room(name);
 
 	if (room->image().width() > static_cast<unsigned int>(std::numeric_limits<int>::max()) ||
 	    room->image().height() > static_cast<unsigned int>(std::numeric_limits<int>::min())) {
@@ -133,6 +133,8 @@ void Drawing::DrawingImpl::fromImage(const char *name)
 		delete texture;
 		throw;
 	}
+
+	room->triangulate(ROBOT_DIAMETER);
 }
 
 void Drawing::DrawingImpl::setNodes(int amount)
