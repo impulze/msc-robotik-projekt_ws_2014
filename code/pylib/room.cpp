@@ -212,8 +212,8 @@ struct Room::RoomImpl
 	unsigned int height;
 	unsigned char stride;
 	CDT cdt;
-	std::vector<Polygon2D> triangulatedPolygons;
-	std::vector<Coord2D> calculatedPath;
+	std::vector<Triangle> triangulation;
+	std::vector<Coord2D> generatedPath;
 	NeighboursMap neighbours;
 	std::set<Coord2D> waypoints;
 	Coord2D startpoint;
@@ -231,7 +231,7 @@ struct Room::RoomImpl
 
 	void createPolygons()
 	{
-		triangulatedPolygons.clear();
+		triangulation.clear();
 
 		// mark faces in/out of domain
 		initializeID(cdt);
@@ -240,18 +240,18 @@ struct Room::RoomImpl
 		for (CDT::Finite_faces_iterator fit = cdt.finite_faces_begin();
 		     fit != cdt.finite_faces_end();
 		     ++fit) {
-			Polygon2D polygon;
+			Triangle triangle;
 
 			if (fit->getInDomain()) {
 				CDT::Point p0 = fit->vertex(0)->point();
 				CDT::Point p1 = fit->vertex(1)->point();
 				CDT::Point p2 = fit->vertex(2)->point();
 
-				polygon.push_back(Coord2D(p0.x(), p0.y()));
-				polygon.push_back(Coord2D(p1.x(), p1.y()));
-				polygon.push_back(Coord2D(p2.x(), p2.y()));
+				triangle[0] = Coord2D(p0.x(), p0.y());
+				triangle[1] = Coord2D(p1.x(), p1.y());
+				triangle[2] = Coord2D(p2.x(), p2.y());
 
-				triangulatedPolygons.push_back(polygon);
+				triangulation.push_back(triangle);
 			}
 		}
 	}
@@ -366,7 +366,7 @@ struct Room::RoomImpl
 	void triangulate(unsigned char distance)
 	{
 		waypoints.clear();
-		triangulatedPolygons.clear();
+		triangulation.clear();
 		cdt.clear();
 		startpoint = Coord2D();
 		endpoint = Coord2D();
@@ -472,11 +472,11 @@ struct Room::RoomImpl
 		return true;
 	}
 
-	void calculatePath()
+	void generatePath()
 	{
 		calculateNeighbours();
 
-		calculatedPath.clear();
+		generatedPath.clear();
 
 		std::map<Coord2D, int> neighbourToIndexMap;
 
@@ -534,7 +534,7 @@ struct Room::RoomImpl
 
 			assert(found != neighbourToIndexMap.end());
 
-			calculatedPath.push_back(found->first);
+			generatedPath.push_back(found->first);
 		}
 	}
 
@@ -663,27 +663,17 @@ void Room::triangulate(unsigned char distance)
 	p->triangulate(distance);
 }
 
-std::vector<Polygon2D> const &Room::getTriangulatedPolygons() const
+std::vector<Triangle> const &Room::getTriangulation() const
 {
-	return p->triangulatedPolygons;
+	return p->triangulation;
 }
 
-void Room::calculatePath()
+void Room::generatePath()
 {
-	p->calculatePath();
+	p->generatePath();
 }
 
-std::vector<Coord2D> const &Room::getCalculatedPath() const
+std::vector<Coord2D> const &Room::getGeneratedPath() const
 {
-	return p->calculatedPath;
-}
-
-void Room::calculateNeighbours()
-{
-	p->calculateNeighbours();
-}
-
-Room::NeighboursMap const &Room::getNeighbours() const
-{
-	return p->neighbours;
+	return p->generatedPath;
 }

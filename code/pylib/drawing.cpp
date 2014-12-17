@@ -158,7 +158,7 @@ void Drawing::DrawingImpl::setNodes(int amount)
 		}
 	}
 
-	room->calculatePath();
+	room->generatePath();
 }
 
 void Drawing::DrawingImpl::setWaypointModification(Drawing::WaypointModification modification)
@@ -234,7 +234,7 @@ void Drawing::DrawingImpl::mouseClick(int x, int y)
 	}
 
 	if (changed) {
-		room->calculatePath();
+		room->generatePath();
 	}
 }
 
@@ -288,7 +288,7 @@ void Drawing::DrawingImpl::initialize()
 		}
 	}
 
-	room->calculatePath();
+	room->generatePath();
 }
 
 void Drawing::DrawingImpl::paint()
@@ -343,13 +343,13 @@ void Drawing::DrawingImpl::paint()
 		// light blue
 		glColor3f(0.5f, 0.8f, 1.0f);
 		glLineWidth(2.0f);
-		std::vector<Polygon2D> const &triangulatedPolygons = room->getTriangulatedPolygons();
-		for (std::vector<Polygon2D>::const_iterator it = triangulatedPolygons.begin();
+		std::vector<Triangle> const &triangulatedPolygons = room->getTriangulation();
+		for (std::vector<Triangle>::const_iterator it = triangulatedPolygons.begin();
 		     it != triangulatedPolygons.end();
 		     it++) {
 			glBegin(GL_LINE_LOOP);
 
-			for (std::size_t i = 0; i < it->size(); i++) {
+			for (int i = 0; i < 3; i++) {
 				unsigned int x = (*it)[i].x;
 				unsigned int y = texture->height() - 1 - (*it)[i].y;
 				glVertex2i(x, y);
@@ -374,7 +374,7 @@ void Drawing::DrawingImpl::paint()
 		// dark-yellow
 		glColor3f(0.7f, 0.7f, 0.0f);
 		glBegin(GL_LINE_STRIP);
-		std::vector<Coord2D> const &calculatedPath = room->getCalculatedPath();
+		std::vector<Coord2D> const &calculatedPath = room->getGeneratedPath();
 		for (std::vector<Coord2D>::size_type i = 0; i < calculatedPath.size() - 1; i++) {
 			Coord2D c1;
 			Coord2D c2;

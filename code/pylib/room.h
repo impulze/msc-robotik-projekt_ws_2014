@@ -2,7 +2,7 @@
 #define ROB_ROOM_H_INCLUDED
 
 #include "coord.h"
-#include "polygon.h"
+#include "triangle.h"
 
 #include <map>
 #include <set>
@@ -31,13 +31,10 @@ public:
 	std::set<Coord2D> const &getWaypoints() const;
 
 	void triangulate(unsigned char distance);
-	std::vector<Polygon2D> const &getTriangulatedPolygons() const;
+	std::vector<Triangle> const &getTriangulation() const;
 
-	void calculatePath();
-	std::vector<Coord2D> const &getCalculatedPath() const;
-
-	void calculateNeighbours();
-	NeighboursMap const &getNeighbours() const;
+	void generatePath();
+	std::vector<Coord2D> const &getGeneratedPath() const;
 
 private:
 	class RoomImpl;

@@ -4,7 +4,7 @@
 
 #include <stdexcept>
 
-void check_gl_error()
+void checkGLError()
 {
 	GLenum glError = glGetError();
 
