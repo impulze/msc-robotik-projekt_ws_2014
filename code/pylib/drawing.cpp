@@ -1,18 +1,22 @@
 #define GL_GLEXT_PROTOTYPES
+
+#include "algo.h"
+#include "coord.h"
 #include "drawing.h"
 #include "room.h"
 #include "texture.h"
 
+#include <GL/gl.h>
 #include <GL/glu.h>
+#include <IL/il.h>
 #include <IL/ilu.h>
 
 #include <cassert>
 #include <cmath>
-#include <cstdio>
 #include <cstdlib>
 #include <ctime>
-#include <iostream>
 #include <limits>
+#include <set>
 #include <stdexcept>
 #include <vector>
 
@@ -22,133 +26,168 @@
 
 #define ROBOT_DIAMETER 5
 
-#include "algo.h"
-
+// private namespace
 namespace
 {
 
-	void throw_error_from_gl_error()
-	{
-		GLenum glError = glGetError();
+void throwErrorFromGLError();
+long randomAtMost(long max);
 
-		if (glError != GL_NO_ERROR) {
-			const char *string = reinterpret_cast<const char *>(gluErrorString(glError));
-			throw std::runtime_error(string);
-		}
-	}
+void throwErrorFromGLError()
+{
+	GLenum glError = glGetError();
 
-	long random_at_most(long max)
-	{
-		unsigned long num_bins = static_cast<unsigned long>(max) + 1;
-		unsigned long num_rand = static_cast<unsigned long>(RAND_MAX) + 1;
-		unsigned long bin_size = num_rand / num_bins;
-		unsigned long defect = num_rand % num_bins;
-
-		int x;
-
-		while (true) {
-			x = std::rand();
-
-			if (num_rand - defect > static_cast<unsigned long>(x)) {
-				break;
-			}
-		}
-
-		return x / bin_size;
+	if (glError != GL_NO_ERROR) {
+		const char *string = reinterpret_cast<const char *>(gluErrorString(glError));
+		throw std::runtime_error(string);
 	}
 }
 
-Drawing::Drawing()
-	: waypointModification_(WaypointNoMod),
-	  room_(0),
-	  texture_(0),
-	  showTriangulation_(false),
-	  showWaypoints_(false),
-	  showPath_(false)
+long randomAtMost(long max)
+{
+	unsigned long num_bins = static_cast<unsigned long>(max) + 1;
+	unsigned long num_rand = static_cast<unsigned long>(RAND_MAX) + 1;
+	unsigned long bin_size = num_rand / num_bins;
+	unsigned long defect = num_rand % num_bins;
+
+	int x;
+
+	while (true) {
+		x = std::rand();
+
+		if (num_rand - defect > static_cast<unsigned long>(x)) {
+			break;
+		}
+	}
+
+	return x / bin_size;
+}
+
+} // end of private namespace
+
+class Drawing::DrawingImpl
+{
+public:
+	DrawingImpl();
+	~DrawingImpl();
+
+	void fromImage(const char *name);
+
+	void setNodes(int amount);
+	void setWaypointModification(Drawing::WaypointModification modification);
+	void setOption(Drawing::Option option, bool enabled);
+	void mouseClick(int x, int y);
+
+	void initialize();
+	void paint();
+	void resize(int width, int height);
+
+	void freeTexture();
+	bool checkNode(int x, int y);
+	bool delNode(int x, int y);
+	void drawPoint(int x, int y);
+
+	Drawing::WaypointModification waypointModification;
+	GLint viewport[4];
+	GLuint circleVBO;
+	Room *room;
+	Texture *texture;
+	bool showTriangulation;
+	bool showWaypoints;
+	bool showPath;
+};
+
+Drawing::DrawingImpl::DrawingImpl()
+	: waypointModification(Drawing::WaypointNoMod),
+	  room(0),
+	  texture(0),
+	  showTriangulation(false),
+	  showWaypoints(false),
+	  showPath(false)
 {
 	std::srand(std::time(0));
 }
 
-Drawing::~Drawing()
+Drawing::DrawingImpl::~DrawingImpl()
 {
 	freeTexture();
-	glDeleteBuffers(1, &circleVBO_);
+	glDeleteBuffers(1, &circleVBO);
 }
 
-void Drawing::fromImage(const char *name)
+void Drawing::DrawingImpl::fromImage(const char *name)
 {
 	freeTexture();
 
-	room_ = new Room(name, ROBOT_DIAMETER);
+	room = new Room(name, ROBOT_DIAMETER);
 
-	if (room_->image().width() > static_cast<unsigned int>(std::numeric_limits<int>::max()) ||
-	    room_->image().height() > static_cast<unsigned int>(std::numeric_limits<int>::min())) {
-		delete room_;
+	if (room->image().width() > static_cast<unsigned int>(std::numeric_limits<int>::max()) ||
+	    room->image().height() > static_cast<unsigned int>(std::numeric_limits<int>::min())) {
+		delete room;
 		throw std::runtime_error("OpenGL cannot draw this texture.");
 	}
 
 	try {
-		texture_ = new Texture(room_->image());
+		texture = new Texture(room->image());
 	} catch (...) {
-		delete texture_;
+		delete texture;
 		throw;
 	}
 }
 
-void Drawing::setNodes(int amount)
+void Drawing::DrawingImpl::setNodes(int amount)
 {
-	Coord2D startpoint = room_->getStartpoint();
-	Coord2D endpoint = room_->getEndpoint();
+	Coord2D startpoint = room->getStartpoint();
+	Coord2D endpoint = room->getEndpoint();
 
-	room_->triangulate(ROBOT_DIAMETER);
+	room->triangulate(ROBOT_DIAMETER);
 
-	bool result = room_->setStartpoint(startpoint);
+	bool result = room->setStartpoint(startpoint);
 	assert(result);
 
-	result = room_->setEndpoint(endpoint);
+	result = room->setEndpoint(endpoint);
 	assert(result);
 
 	for (int i = 0; i < amount; i++) {
-		int randX = random_at_most(texture_->width() - 1);
-		int randY = random_at_most(texture_->height() - 1);
+		int randX = randomAtMost(texture->width() - 1);
+		int randY = randomAtMost(texture->height() - 1);
 
-		if (!room_->insertWaypoint(Coord2D(randX, randY))) {
+		if (!room->insertWaypoint(Coord2D(randX, randY))) {
 			i--;
 			continue;
 		}
 	}
 
-	room_->calculatePath();
+	room->calculatePath();
 }
 
-void Drawing::setWaypointModification(WaypointModification modification)
+void Drawing::DrawingImpl::setWaypointModification(Drawing::WaypointModification modification)
 {
-	waypointModification_ = modification;
+	waypointModification = modification;
 }
 
-void Drawing::setOption(Option option, bool enabled)
+void Drawing::DrawingImpl::setOption(Drawing::Option option, bool enabled)
 {
 	switch (option) {
-		case ShowTriangulation:
-			showTriangulation_ = enabled;
+		case Drawing::ShowTriangulation:
+			showTriangulation = enabled;
 			break;
 
-		case ShowWaypoints:
-			showWaypoints_ = enabled;
+		case Drawing::ShowWaypoints:
+			showWaypoints = enabled;
 			break;
 
-		case ShowPath:
-			showPath_ = enabled;
+		case Drawing::ShowPath:
+			showPath = enabled;
 			break;
 	}
 }
 
-void Drawing::mouseClick(int x, int y)
+void Drawing::DrawingImpl::mouseClick(int x, int y)
 {
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glOrtho(0, texture_->width(), 0, texture_->height(), -1.0f, 4.0f);
-	throw_error_from_gl_error();
+	glOrtho(0, texture->width(), 0, texture->height(), -1.0f, 4.0f);
+	throwErrorFromGLError();
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
@@ -161,32 +200,32 @@ void Drawing::mouseClick(int x, int y)
 	glGetDoublev(GL_PROJECTION_MATRIX, projection);
 
 	GLfloat z;
-	glReadPixels(x, viewport_[3] - y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &z);
+	glReadPixels(x, viewport[3] - y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &z);
 
 	GLdouble posX, posY, posZ;
-	gluUnProject(x, y, z, modelview, projection, viewport_, &posX, &posY, &posZ);
-	throw_error_from_gl_error();
+	gluUnProject(x, y, z, modelview, projection, viewport, &posX, &posY, &posZ);
+	throwErrorFromGLError();
 
 	x = posX;
 	y = posY;
 
 	bool changed = false;
 
-	switch (waypointModification_) {
-		case WaypointAdd:
-			changed = room_->insertWaypoint(Coord2D(x, y));
+	switch (waypointModification) {
+		case Drawing::WaypointAdd:
+			changed = room->insertWaypoint(Coord2D(x, y));
 			break;
 
-		case WaypointDelete:
+		case Drawing::WaypointDelete:
 			changed = delNode(x, y);
 			break;
 
-		case WaypointStart:
-			changed = room_->setStartpoint(Coord2D(x, y));
+		case Drawing::WaypointStart:
+			changed = room->setStartpoint(Coord2D(x, y));
 			break;
 
-		case WaypointEnd:
-			changed = room_->setEndpoint(Coord2D(x, y));
+		case Drawing::WaypointEnd:
+			changed = room->setEndpoint(Coord2D(x, y));
 			break;
 
 		default:
@@ -194,13 +233,11 @@ void Drawing::mouseClick(int x, int y)
 	}
 
 	if (changed) {
-		room_->calculatePath();
+		room->calculatePath();
 	}
 }
 
-GLuint triangleVBO;
-
-void Drawing::initialize()
+void Drawing::DrawingImpl::initialize()
 {
 	fromImage("/home/impulze/Diagramm2.png");
 	glEnable(GL_DEPTH_TEST);
@@ -218,56 +255,44 @@ void Drawing::initialize()
 		vertices[(i + 1) * 2 + 1] = drawY;
 	}
 
-	glGenBuffersARB(1, &circleVBO_);
-	throw_error_from_gl_error();
+	glGenBuffersARB(1, &circleVBO);
+	throwErrorFromGLError();
 
 	try {
-		glBindBufferARB(GL_ARRAY_BUFFER_ARB, circleVBO_);
-		throw_error_from_gl_error();
+		glBindBufferARB(GL_ARRAY_BUFFER_ARB, circleVBO);
+		throwErrorFromGLError();
 		glBufferDataARB(GL_ARRAY_BUFFER_ARB, sizeof vertices, vertices, GL_STATIC_DRAW);
-		throw_error_from_gl_error();
+		throwErrorFromGLError();
 		glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
-		throw_error_from_gl_error();
+		throwErrorFromGLError();
 	} catch (...) {
-		glDeleteBuffers(1, &circleVBO_);
-	}
-
-	{
-		GLdouble tVertices[6];
-		tVertices[0] = 0.0; tVertices[1] = 0.0;
-		tVertices[2] = 1.0; tVertices[2] = 0.0;
-		tVertices[3] = 0.5; tVertices[4] = 0.5;
-
-		glGenBuffersARB(1, &triangleVBO);
-		glBindBufferARB(GL_ARRAY_BUFFER_ARB, triangleVBO);
-		glBufferDataARB(GL_ARRAY_BUFFER_ARB, sizeof tVertices, tVertices, GL_STATIC_DRAW);
-		glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
+		glDeleteBuffers(1, &circleVBO);
 	}
 
 	while (true) {
-		int randX = random_at_most(texture_->width() - 1);
-		int randY = random_at_most(texture_->height() - 1);
+		int randX = randomAtMost(texture->width() - 1);
+		int randY = randomAtMost(texture->height() - 1);
 
-		if (room_->setStartpoint(Coord2D(randX, randY))) {
+		if (room->setStartpoint(Coord2D(randX, randY))) {
 			break;
 		}
 	}
 
 	while (true) {
-		int randX = random_at_most(texture_->width() - 1);
-		int randY = random_at_most(texture_->height() - 1);
+		int randX = randomAtMost(texture->width() - 1);
+		int randY = randomAtMost(texture->height() - 1);
 
-		if (room_->setEndpoint(Coord2D(randX, randY))) {
+		if (room->setEndpoint(Coord2D(randX, randY))) {
 			break;
 		}
 	}
 
-	room_->calculatePath();
+	room->calculatePath();
 }
 
-void Drawing::paint()
+void Drawing::DrawingImpl::paint()
 {
-	if (texture_ == 0) {
+	if (texture == 0) {
 		return;
 	}
 
@@ -280,8 +305,8 @@ void Drawing::paint()
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	// default projection: glOrtho(l=-1,r=1,b=-1,t=1,n=1,f=-1)
-	glOrtho(0, texture_->width(), 0, texture_->height(), -1.0f, 4.0f);
-	throw_error_from_gl_error();
+	glOrtho(0, texture->width(), 0, texture->height(), -1.0f, 4.0f);
+	throwErrorFromGLError();
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
@@ -293,31 +318,31 @@ void Drawing::paint()
 
 	// Texture
 	glEnable(GL_TEXTURE_2D);
-	texture_->bind();
+	texture->bind();
 	glBegin(GL_POLYGON);
 	glTexCoord2i(0, 1);
 	glVertex2i(0, 0);
 	glTexCoord2i(0, 0);
-	glVertex2i(0, texture_->height());
+	glVertex2i(0, texture->height());
 	glTexCoord2i(1, 0);
-	glVertex2i(texture_->width(), texture_->height());
+	glVertex2i(texture->width(), texture->height());
 	glTexCoord2i(1, 1);
-	glVertex2i(texture_->width(), 0);
+	glVertex2i(texture->width(), 0);
 	glEnd();
 	glDisable(GL_TEXTURE_2D);
 
 	// Waypoints
-	glBindBuffer(GL_ARRAY_BUFFER, circleVBO_);
+	glBindBuffer(GL_ARRAY_BUFFER, circleVBO);
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(2, GL_DOUBLE, 0, 0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	if (showTriangulation_) {
+	if (showTriangulation) {
 		glTranslatef(0.0f, 0.0f, 0.2f);
 		// light blue
 		glColor3f(0.5f, 0.8f, 1.0f);
 		glLineWidth(2.0f);
-		std::vector<Polygon2D> const &triangulatedPolygons = room_->getTriangulatedPolygons();
+		std::vector<Polygon2D> const &triangulatedPolygons = room->getTriangulatedPolygons();
 		for (std::vector<Polygon2D>::const_iterator it = triangulatedPolygons.begin();
 		     it != triangulatedPolygons.end();
 		     it++) {
@@ -325,7 +350,7 @@ void Drawing::paint()
 
 			for (std::size_t i = 0; i < it->size(); i++) {
 				unsigned int x = (*it)[i].x;
-				unsigned int y = texture_->height() - 1 - (*it)[i].y;
+				unsigned int y = texture->height() - 1 - (*it)[i].y;
 				glVertex2i(x, y);
 			}
 
@@ -333,23 +358,23 @@ void Drawing::paint()
 		}
 	}
 
-	if (showWaypoints_) {
+	if (showWaypoints) {
 		glTranslatef(0.0f, 0.0f, 0.2f);
 		// yellow
 		glColor3f(1.0f, 1.0f, 0.0f);
-		std::set<Coord2D> const &waypoints = room_->getWaypoints();
+		std::set<Coord2D> const &waypoints = room->getWaypoints();
 		for (std::set<Coord2D>::const_iterator it = waypoints.begin(); it != waypoints.end(); it++) {
 			drawPoint(it->x, it->y);
 		}
 	}
 
-	if (showPath_) {
+	if (showPath) {
 		glTranslatef(0.0f, 0.0f, 0.2f);
 		// dark-yellow
 		glColor3f(0.7f, 0.7f, 0.0f);
 		glBegin(GL_LINE_STRIP);
-		std::vector<Coord2D> const &calculatedPath = room_->getCalculatedPath();
-		for (int i = 0; i < calculatedPath.size() - 1; i++) {
+		std::vector<Coord2D> const &calculatedPath = room->getCalculatedPath();
+		for (std::vector<Coord2D>::size_type i = 0; i < calculatedPath.size() - 1; i++) {
 			Coord2D c1;
 			Coord2D c2;
 			Coord2D c3;
@@ -362,7 +387,7 @@ void Drawing::paint()
 				c3 = calculatedPath[i + 2];
 				for (float t = 0.0f; t < 1.0f; t += 0.02f) {
 					result = catmullRomFirst(t, c1, c2, c3);
-					glVertex2f(result.x, texture_->height() - 1 - result.y);
+					glVertex2f(result.x, texture->height() - 1 - result.y);
 				}
 			} else if (i == calculatedPath.size() - 2) {
 				c1 = calculatedPath[i - 1];
@@ -370,7 +395,7 @@ void Drawing::paint()
 				c3 = calculatedPath[i + 1];
 				for (float t = 0.0f; t < 1.0f; t += 0.02f) {
 					result = catmullRomLast(t, c1, c2, c3);
-					glVertex2f(result.x, texture_->height() - 1 - result.y);
+					glVertex2f(result.x, texture->height() - 1 - result.y);
 				}
 			} else {
 				c1 = calculatedPath[i - 1];
@@ -379,7 +404,7 @@ void Drawing::paint()
 				c4 = calculatedPath[i + 2];
 				for (float t = 0.0f; t < 1.0f; t += 0.02f) {
 					result = catmullRom(t, c1, c2, c3, c4);
-					glVertex2f(result.x, texture_->height() - 1 - result.y);
+					glVertex2f(result.x, texture->height() - 1 - result.y);
 				}
 			}
 		}
@@ -388,11 +413,11 @@ void Drawing::paint()
 
 	glTranslatef(0.0f, 0.0f, 0.2f);
 	glColor3f(1.0f, 0.0f, 0.0f);
-	drawPoint(room_->getEndpoint().x, room_->getEndpoint().y);
+	drawPoint(room->getEndpoint().x, room->getEndpoint().y);
 
 	glTranslatef(0.0f, 0.0f, 0.2f);
 	glColor3f(0.0f, 1.0f, 0.0f);
-	drawPoint(room_->getStartpoint().x, room_->getStartpoint().y);
+	drawPoint(room->getStartpoint().x, room->getStartpoint().y);
 
 	glDisableClientState(GL_VERTEX_ARRAY);
 
@@ -403,36 +428,36 @@ void Drawing::paint()
 #endif
 }
 
-void Drawing::resize(int width, int height)
+void Drawing::DrawingImpl::resize(int width, int height)
 {
-	viewport_[0] = 0;
-	viewport_[1] = 0;
-	viewport_[2] = width;
-	viewport_[3] = height;
+	viewport[0] = 0;
+	viewport[1] = 0;
+	viewport[2] = width;
+	viewport[3] = height;
 }
 
-void Drawing::freeTexture()
+void Drawing::DrawingImpl::freeTexture()
 {
-	delete texture_;
-	delete room_;
+	delete texture;
+	delete room;
 
-	room_ = 0;
-	texture_ = 0;
+	room = 0;
+	texture = 0;
 }
 
-bool Drawing::delNode(int x, int y)
+bool Drawing::DrawingImpl::delNode(int x, int y)
 {
 	// the user clicked near or directly into the waypoint
 	int left = std::max(0, x - ROBOT_DIAMETER / 2);
-	int right = std::min(static_cast<int>(texture_->width()) - 1, x + ROBOT_DIAMETER / 2);
+	int right = std::min(static_cast<int>(texture->width()) - 1, x + ROBOT_DIAMETER / 2);
 	int bottom = std::max(0, y - ROBOT_DIAMETER / 2);
-	int top = std::min(static_cast<int>(texture_->height()) - 1, y + ROBOT_DIAMETER / 2);
+	int top = std::min(static_cast<int>(texture->height()) - 1, y + ROBOT_DIAMETER / 2);
 
 	for (int i = bottom; i <= top; i++) {
 		for (int j = left; j <= right; j++) {
 			Coord2D coord(j, i);
 
-			if (room_->removeWaypoint(coord)) {
+			if (room->removeWaypoint(coord)) {
 				return true;
 			}
 		}
@@ -441,25 +466,72 @@ bool Drawing::delNode(int x, int y)
 	return false;
 }
 
-void Drawing::drawPoint(int x, int y)
+void Drawing::DrawingImpl::drawPoint(int x, int y)
 {
 #if COLLISION_DETECTION
 		int left = std::max(0, x - ROBOT_DIAMETER / 2);
-		int right = std::min(static_cast<int>(texture_->width()) - 1, x + ROBOT_DIAMETER / 2);
+		int right = std::min(static_cast<int>(texture->width()) - 1, x + ROBOT_DIAMETER / 2);
 		int bottom = std::max(0, y - ROBOT_DIAMETER / 2);
-		int top = std::min(static_cast<int>(texture_->height()) - 1, y + ROBOT_DIAMETER / 2);
+		int top = std::min(static_cast<int>(texture->height()) - 1, y + ROBOT_DIAMETER / 2);
 
 		glRecti(left, bottom, right, top);
 #else
 		int offsetX = x;
-		int offsetY = texture_->height() - 1 - y;
+		int offsetY = texture->height() - 1 - y;
 		glTranslatef(offsetX, offsetY, 0.0f);
 		glDrawArrays(GL_TRIANGLE_FAN, 0, 301);
 		glTranslatef(-offsetX, -offsetY, 0.0f);
 #endif
 }
 
+Drawing::Drawing()
+	: p(new DrawingImpl)
+{
+}
+
+void Drawing::fromImage(const char *name)
+{
+	p->fromImage(name);
+}
+
 void Drawing::toImage(const char *name)
 {
+	static_cast<void>(name);
+
 	return;
+}
+
+void Drawing::setNodes(int amount)
+{
+	p->setNodes(amount);
+}
+
+void Drawing::setWaypointModification(WaypointModification modification)
+{
+	p->setWaypointModification(modification);
+}
+
+void Drawing::setOption(Option option, bool enabled)
+{
+	p->setOption(option, enabled);
+}
+
+void Drawing::mouseClick(int x, int y)
+{
+	p->mouseClick(x, y);
+}
+
+void Drawing::initialize()
+{
+	p->initialize();
+}
+
+void Drawing::paint()
+{
+	p->paint();
+}
+
+void Drawing::resize(int width, int height)
+{
+	p->resize(width, height);
 }
