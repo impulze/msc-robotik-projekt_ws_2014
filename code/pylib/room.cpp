@@ -5,53 +5,6 @@
 
 #include <cmath>
 
-namespace
-{
-	bool isBlack(unsigned char const *bytes);
-	bool isWhite(unsigned char const *bytes);
-
-	template <class GeomTraits, class FaceBase>
-	class CDTFaceBase
-		: public FaceBase
-	{
-	public:
-		typedef typename FaceBase::Face_handle FaceHandle;
-		typedef typename FaceBase::Vertex_handle VertexHandle;
-
-		// required for CGAL
-		template <class TDS2>
-		struct Rebind_TDS
-		{
-			typedef typename FaceBase::template Rebind_TDS<TDS2>::Other FaceBase2;
-			typedef CDTFaceBase<GeomTraits, FaceBase2> Other;
-		};
-
-		CDTFaceBase();
-		CDTFaceBase(VertexHandle vh0, VertexHandle vh1, VertexHandle vh2);
-		CDTFaceBase(VertexHandle vh0, VertexHandle vh1, VertexHandle vh2,
-		            FaceHandle fh0, FaceHandle fh1, FaceHandle fh2);
-
-		bool getInDomain() const;
-		void setInDomain(const bool set);
-
-		int getCounter() const;
-		void setCounter(int i);
-
-	private:
-		int status_;
-	};
-
-	bool isBlack(unsigned char const *bytes)
-	{
-		return bytes[0] == 0 && bytes[1] == 0 && bytes[2] == 0;
-	}
-
-	bool isWhite(unsigned char const *bytes)
-	{
-		return bytes[0] == 255 && bytes[1] == 255 && bytes[2] == 255;
-	}
-} // end of private namespace
-
 struct Room::RoomImpl
 {
 	RoomImpl(std::string const &filename, unsigned char distance)
@@ -79,8 +32,6 @@ struct Room::RoomImpl
 		
 			cdt.insertConstraints(points.begin(), points.end());
 		}
-
-		triangulation = cdt.triangulate();
 	}
 
 	RoomImage *image;
@@ -89,27 +40,9 @@ struct Room::RoomImpl
 	unsigned int height;
 	unsigned char stride;
 	MyCDT cdt;
-	std::vector<Triangle> triangulation;
-	std::vector<Coord2D> generatedPath;
-	NeighboursMap neighbours;
 	std::set<Coord2D> waypoints;
 	Coord2D startpoint;
 	Coord2D endpoint;
-
-	bool isBlack(Coord2D const &coord)
-	{
-		return ::isBlack(bytes + (coord.y * width + coord.x) * stride);
-	}
-
-	bool isWhite(Coord2D const &coord)
-	{
-		return ::isWhite(bytes + (coord.y * width + coord.x) * stride);
-	}
-
-	int _sign(Coord2D const &p0, CDT::Point const &p1, CDT::Point const &p2)
-	{
-		return (p0.x - p2.x()) * (p1.y() - p2.y()) - (p1.x() - p2.x()) * (p0.y - p2.y());
-	}
 
 	bool insert(Coord2D const &coord)
 	{
@@ -124,6 +57,7 @@ struct Room::RoomImpl
 		}
 
 		// TOP PRIO TODO: find out why this sometimes failed when generating 2000+ waypoints
+		// TODO: found out, because internal vertices aren't stored in waypoints
 		assert(!cdt.pointIsVertex(coord));
 
 		if (!cdt.inDomain(coord)) {
@@ -133,8 +67,6 @@ struct Room::RoomImpl
 
 		waypoints.insert(coord);
 		cdt.insert(coord);
-
-		triangulation = cdt.triangulate();
 
 		return true;
 	}
@@ -153,8 +85,6 @@ struct Room::RoomImpl
 
 		waypoints.erase(waypointIterator);
 		cdt.remove(coord);
-
-		triangulation = cdt.triangulate();
 
 		return true;
 	}
@@ -193,16 +123,11 @@ struct Room::RoomImpl
 		cdt.insert(coord);
 		startpoint = coord;
 
-		triangulation = cdt.triangulate();
-
 		return true;
 	}
 
 	bool setEndpoint(Coord2D const &coord)
 	{
-		CDT::Vertex_handle vh;
-		CDT::Face_handle fh;
-
 		if (endpoint == coord) {
 			return true;
 		}
@@ -232,22 +157,19 @@ struct Room::RoomImpl
 		cdt.insert(coord);
 		endpoint = coord;
 
-		triangulation = cdt.triangulate();
-
 		return true;
 	}
 
-	void generatePath()
+	std::vector<Coord2D> generatePath()
 	{
-		calculateNeighbours();
+		std::vector<Coord2D> generatedPath;
 
-		generatedPath.clear();
-
+		MyCDT::NeighboursMap neighbours = cdt.getNeighbours(waypoints, startpoint, endpoint);
 		std::map<Coord2D, int> neighbourToIndexMap;
 
 		int i = 0;
 
-		for (Room::NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
+		for (MyCDT::NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
 			Coord2D coord = it->first;
 
 			if (neighbourToIndexMap.find(coord) == neighbourToIndexMap.end()) {
@@ -255,7 +177,7 @@ struct Room::RoomImpl
 			}
 		}
 
-		for (Room::NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
+		for (MyCDT::NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
 			for (std::set<Coord2D>::const_iterator cit = it->second.begin(); cit != it->second.end(); cit++) {
 				Coord2D checkCoord = *cit;
 				assert(neighbourToIndexMap.find(checkCoord) != neighbourToIndexMap.end());
@@ -264,7 +186,7 @@ struct Room::RoomImpl
 
 		adjacency_list_t adjacency_list(neighbours.size());
 
-		for (Room::NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
+		for (MyCDT::NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
 			Coord2D thisCoord = it->first;
 
 			for (std::set<Coord2D>::const_iterator cit = it->second.begin(); cit != it->second.end(); cit++) {
@@ -301,62 +223,8 @@ struct Room::RoomImpl
 
 			generatedPath.push_back(found->first);
 		}
-	}
 
-	void calculateNeighbours()
-	{
-		neighbours.clear();
-
-		for (CDT::Finite_vertices_iterator vi = cdt.cdt.finite_vertices_begin(); vi != cdt.cdt.finite_vertices_end(); vi++) {
-			Coord2D c = Coord2D(vi->point().x(), vi->point().y());
-
-			if (waypoints.find(c) == waypoints.end()) {
-				if (c != startpoint && c != endpoint) {
-					continue;
-				}
-			}
-
-			CDT::Edge_circulator ec = cdt.cdt.incident_edges(vi);
-			CDT::Edge_circulator ec_done = ec;
-			std::set<Coord2D> thisNeighbours;
-
-			do {
-				bool addNeighbour = false;
-
-				if (cdt.cdt.is_constrained(*ec)) {
-					addNeighbour = true;
-				} else if (!cdt.cdt.is_infinite(ec)) {
-					if (ec->first->getInDomain()) {
-						addNeighbour = true;
-					}
-				}
-
-				if (addNeighbour) {
-					CDT::Segment segment = cdt.cdt.segment(ec);
-					Coord2D c0(segment.point(0).x(), segment.point(0).y());
-					Coord2D c1(segment.point(1).x(), segment.point(1).y());
-
-
-					if (c0 == c) {
-						if (waypoints.find(c1) != waypoints.end() ||
-						    c1 == startpoint ||
-						    c1 == endpoint) {
-							thisNeighbours.insert(c1);
-						}
-					} else {
-						if (waypoints.find(c0) != waypoints.end() ||
-						    c0 == startpoint ||
-						    c0 == endpoint) {
-							thisNeighbours.insert(c0);
-						}
-					}
-				}
-
-				ec++;
-			} while (ec != ec_done);
-
-			neighbours[c] = thisNeighbours;
-		}
+		return generatedPath;
 	}
 };
 
@@ -422,17 +290,12 @@ std::set<Coord2D> const &Room::getWaypoints() const
 	return p->waypoints;
 }
 
-std::vector<Triangle> const &Room::getTriangulation() const
+std::vector<Triangle> Room::triangulate() const
 {
-	return p->triangulation;
+	return p->cdt.triangulate();
 }
 
-void Room::generatePath()
+std::vector<Coord2D> Room::generatePath() const
 {
-	p->generatePath();
-}
-
-std::vector<Coord2D> const &Room::getGeneratedPath() const
-{
-	return p->generatedPath;
+	return p->generatePath();
 }

@@ -4,7 +4,6 @@
 #include "coord.h"
 #include "triangle.h"
 
-#include <map>
 #include <set>
 #include <string>
 #include <vector>
@@ -14,8 +13,6 @@ class RoomImage;
 class Room
 {
 public:
-	typedef std::map< Coord2D, std::set<Coord2D> > NeighboursMap;
-
 	Room(std::string const &filename, unsigned char distance);
 
 	RoomImage const &image() const;
@@ -30,10 +27,8 @@ public:
 	bool removeWaypoint(std::set<Coord2D>::iterator waypointIterator);
 	std::set<Coord2D> const &getWaypoints() const;
 
-	std::vector<Triangle> const &getTriangulation() const;
-
-	void generatePath();
-	std::vector<Coord2D> const &getGeneratedPath() const;
+	std::vector<Triangle> triangulate() const;
+	std::vector<Coord2D> generatePath() const;
 
 private:
 	class RoomImpl;

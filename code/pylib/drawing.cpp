@@ -96,6 +96,8 @@ public:
 	bool showTriangulation;
 	bool showWaypoints;
 	bool showPath;
+	std::vector<Triangle> triangulation;
+	std::vector<Coord2D> path;
 };
 
 Drawing::DrawingImpl::DrawingImpl()
@@ -153,7 +155,8 @@ void Drawing::DrawingImpl::setNodes(int amount)
 		}
 	}
 
-	room->generatePath();
+	triangulation = room->triangulate();
+	path = room->generatePath();
 }
 
 void Drawing::DrawingImpl::setWaypointModification(Drawing::WaypointModification modification)
@@ -229,7 +232,8 @@ void Drawing::DrawingImpl::mouseClick(int x, int y)
 	}
 
 	if (changed) {
-		room->generatePath();
+		triangulation = room->triangulate();
+		path = room->generatePath();
 	}
 }
 
@@ -283,7 +287,8 @@ void Drawing::DrawingImpl::initialize()
 		}
 	}
 
-	room->generatePath();
+	triangulation = room->triangulate();
+	path = room->generatePath();
 }
 
 void Drawing::DrawingImpl::paint()
@@ -338,9 +343,8 @@ void Drawing::DrawingImpl::paint()
 		// light blue
 		glColor3f(0.5f, 0.8f, 1.0f);
 		glLineWidth(2.0f);
-		std::vector<Triangle> const &triangulatedPolygons = room->getTriangulation();
-		for (std::vector<Triangle>::const_iterator it = triangulatedPolygons.begin();
-		     it != triangulatedPolygons.end();
+		for (std::vector<Triangle>::const_iterator it = triangulation.begin();
+		     it != triangulation.end();
 		     it++) {
 			glBegin(GL_LINE_LOOP);
 
@@ -364,45 +368,45 @@ void Drawing::DrawingImpl::paint()
 		}
 	}
 
-	if (showPath) {
+	if (showPath && path.size() > 0) {
 		glTranslatef(0.0f, 0.0f, 0.2f);
 		// dark-yellow
 		glColor3f(0.7f, 0.7f, 0.0f);
-		glBegin(GL_LINE_STRIP);
-		std::vector<Coord2D> const &calculatedPath = room->getGeneratedPath();
-		for (std::vector<Coord2D>::size_type i = 0; i < calculatedPath.size() - 1; i++) {
+		//glBegin(GL_LINE_STRIP);
+		glPointSize(1.0f);
+		glBegin(GL_POINTS);
+		for (std::vector<Coord2D>::size_type i = 0; i < path.size() /*- 1*/; i++) {
+#if 0
 			Coord2D c1;
 			Coord2D c2;
 			Coord2D c3;
 			Coord2D c4;
 			Coord2D result;
 
-			if (i == 0) {
-				c1 = calculatedPath[i];
-				c2 = calculatedPath[i + 1];
-				c3 = calculatedPath[i + 2];
-				for (float t = 0.0f; t < 1.0f; t += 0.02f) {
+			for (float t = 0.0f; t < 1.0f; t += 0.02f) {
+				if (i == 0) {
+					c1 = path[i];
+					c2 = path[i + 1];
+					c3 = path[i + 2];
 					result = catmullRomFirst(t, c1, c2, c3);
-					glVertex2f(result.x, texture->height() - 1 - result.y);
-				}
-			} else if (i == calculatedPath.size() - 2) {
-				c1 = calculatedPath[i - 1];
-				c2 = calculatedPath[i];
-				c3 = calculatedPath[i + 1];
-				for (float t = 0.0f; t < 1.0f; t += 0.02f) {
+				} else if (i == path.size() - 2) {
+					c1 = path[i - 1];
+					c2 = path[i];
+					c3 = path[i + 1];
 					result = catmullRomLast(t, c1, c2, c3);
-					glVertex2f(result.x, texture->height() - 1 - result.y);
-				}
-			} else {
-				c1 = calculatedPath[i - 1];
-				c2 = calculatedPath[i];
-				c3 = calculatedPath[i + 1];
-				c4 = calculatedPath[i + 2];
-				for (float t = 0.0f; t < 1.0f; t += 0.02f) {
+				} else {
+					c1 = path[i - 1];
+					c2 = path[i];
+					c3 = path[i + 1];
+					c4 = path[i + 2];
 					result = catmullRom(t, c1, c2, c3, c4);
-					glVertex2f(result.x, texture->height() - 1 - result.y);
 				}
+
+				glVertex2f(result.x, texture->height() - 1 - result.y);
+				//drawPoint(result.x, texture->height() - 1 - result.y);
 			}
+#endif
+				glVertex2f(path[i].x, texture->height() - 1 - path[i].y);
 		}
 		glEnd();
 	}
