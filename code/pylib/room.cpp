@@ -54,13 +54,33 @@ namespace
 
 struct Room::RoomImpl
 {
-	RoomImpl(std::string const &filename)
+	RoomImpl(std::string const &filename, unsigned char distance)
 		: image(new RoomImage(filename))
 	{
 		bytes = image->data().data();
 		width = image->width();
 		height = image->height();
 		stride = image->type() == Image::IMAGE_TYPE_RGB ? 3 : 4;
+
+		std::vector<Polygon2D> const &borderPolygons = image->getBorderPolygons(distance);
+
+		for (std::vector<Polygon2D>::const_iterator it = borderPolygons.begin();
+		     it != borderPolygons.end();
+		     it++) {
+			std::list<CDT::Point> points;
+
+			for (std::size_t i = 0; i < it->size(); i++) {
+				Coord2D coord = (*it)[i];
+				points.push_back(CDT::Point(coord.x, coord.y));
+			}
+
+			Coord2D coord = (*it)[0];
+			points.push_back(CDT::Point(coord.x, coord.y));
+		
+			cdt.insertConstraints(points.begin(), points.end());
+		}
+
+		triangulation = cdt.triangulate();
 	}
 
 	RoomImage *image;
@@ -93,9 +113,6 @@ struct Room::RoomImpl
 
 	bool insert(Coord2D const &coord)
 	{
-		CDT::Vertex_handle vh;
-		CDT::Face_handle fh;
-
 		if (coord == startpoint || coord == endpoint) {
 			std::fprintf(stderr, "Waypoint (%d/%d) is startpoint or endpoint, can't insert.\n", coord.x, coord.y);
 			return false;
@@ -122,17 +139,9 @@ struct Room::RoomImpl
 		return true;
 	}
 
-	bool remove(Coord2D const &coord)
+	bool remove(std::set<Coord2D>::iterator waypointIterator)
 	{
-		CDT::Vertex_handle vh;
-		CDT::Face_handle fh;
-
-		if (coord == startpoint || coord == endpoint) {
-			std::fprintf(stderr, "Waypoint (%d/%d) is startpoint or endpoint, can't remove.\n", coord.x, coord.y);
-			return false;
-		}
-
-		std::set<Coord2D>::iterator waypointIterator = std::find(waypoints.begin(), waypoints.end(), coord);
+		Coord2D coord = *waypointIterator;
 
 		if (waypointIterator == waypoints.end()) {
 			assert(!cdt.pointIsVertex(coord));
@@ -148,35 +157,6 @@ struct Room::RoomImpl
 		triangulation = cdt.triangulate();
 
 		return true;
-	}
-
-	void triangulate(unsigned char distance)
-	{
-		waypoints.clear();
-		triangulation.clear();
-		cdt.cdt.clear();
-		startpoint = Coord2D();
-		endpoint = Coord2D();
-
-		std::vector<Polygon2D> const &borderPolygons = image->getBorderPolygons(distance);
-
-		for (std::vector<Polygon2D>::const_iterator it = borderPolygons.begin();
-		     it != borderPolygons.end();
-		     it++) {
-			std::list<CDT::Point> points;
-
-			for (std::size_t i = 0; i < it->size(); i++) {
-				Coord2D coord = (*it)[i];
-				points.push_back(CDT::Point(coord.x, coord.y));
-			}
-
-			Coord2D coord = (*it)[0];
-			points.push_back(CDT::Point(coord.x, coord.y));
-		
-			cdt.insertConstraints(points.begin(), points.end());
-		}
-
-		triangulation = cdt.triangulate();
 	}
 
 	bool setStartpoint(Coord2D const &coord)
@@ -397,8 +377,8 @@ struct Room::RoomImpl
 
 
 
-Room::Room(std::string const &filename)
-	: p(new RoomImpl(filename))
+Room::Room(std::string const &filename, unsigned char distance)
+	: p(new RoomImpl(filename, distance))
 {
 }
 
@@ -432,19 +412,14 @@ bool Room::insertWaypoint(Coord2D const &coord)
 	return p->insert(coord);
 }
 
-bool Room::removeWaypoint(Coord2D const &coord)
+bool Room::removeWaypoint(std::set<Coord2D>::iterator waypointIterator)
 {
-	return p->remove(coord);
+	return p->remove(waypointIterator);
 }
 
 std::set<Coord2D> const &Room::getWaypoints() const
 {
 	return p->waypoints;
-}
-
-void Room::triangulate(unsigned char distance)
-{
-	p->triangulate(distance);
 }
 
 std::vector<Triangle> const &Room::getTriangulation() const

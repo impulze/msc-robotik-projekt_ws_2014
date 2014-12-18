@@ -16,7 +16,7 @@ class Room
 public:
 	typedef std::map< Coord2D, std::set<Coord2D> > NeighboursMap;
 
-	Room(std::string const &filename);
+	Room(std::string const &filename, unsigned char distance);
 
 	RoomImage const &image() const;
 
@@ -27,10 +27,9 @@ public:
 	Coord2D getEndpoint() const;
 
 	bool insertWaypoint(Coord2D const &coord);
-	bool removeWaypoint(Coord2D const &coord);
+	bool removeWaypoint(std::set<Coord2D>::iterator waypointIterator);
 	std::set<Coord2D> const &getWaypoints() const;
 
-	void triangulate(unsigned char distance);
 	std::vector<Triangle> const &getTriangulation() const;
 
 	void generatePath();

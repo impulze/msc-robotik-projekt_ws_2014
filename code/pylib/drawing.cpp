@@ -119,7 +119,7 @@ void Drawing::DrawingImpl::fromImage(const char *name)
 {
 	freeTexture();
 
-	room = new Room(name);
+	room = new Room(name, ROBOT_DIAMETER);
 
 	if (room->image().width() > static_cast<unsigned int>(std::numeric_limits<int>::max()) ||
 	    room->image().height() > static_cast<unsigned int>(std::numeric_limits<int>::min())) {
@@ -133,22 +133,15 @@ void Drawing::DrawingImpl::fromImage(const char *name)
 		delete texture;
 		throw;
 	}
-
-	room->triangulate(ROBOT_DIAMETER);
 }
 
 void Drawing::DrawingImpl::setNodes(int amount)
 {
-	Coord2D startpoint = room->getStartpoint();
-	Coord2D endpoint = room->getEndpoint();
+	std::set<Coord2D> const &waypoints = room->getWaypoints();
 
-	room->triangulate(ROBOT_DIAMETER);
-
-	bool result = room->setStartpoint(startpoint);
-	assert(result);
-
-	result = room->setEndpoint(endpoint);
-	assert(result);
+	while (!waypoints.empty()) {
+		room->removeWaypoint(waypoints.begin());
+	}
 
 	for (int i = 0; i < amount; i++) {
 		int randX = randomAtMost(texture->width() - 1);
@@ -456,12 +449,17 @@ bool Drawing::DrawingImpl::delNode(int x, int y)
 	int bottom = std::max(0, y - ROBOT_DIAMETER / 2);
 	int top = std::min(static_cast<int>(texture->height()) - 1, y + ROBOT_DIAMETER / 2);
 
-	for (int i = bottom; i <= top; i++) {
-		for (int j = left; j <= right; j++) {
-			Coord2D coord(j, i);
+	std::set<Coord2D> const &waypoints = room->getWaypoints();
+	for (std::set<Coord2D>::iterator it = waypoints.begin(); it != waypoints.end(); ++it) {
+		for (int i = bottom; i <= top; i++) {
+			for (int j = left; j <= right; j++) {
+				Coord2D coord(j, i);
 
-			if (room->removeWaypoint(coord)) {
-				return true;
+				if (*it == coord) {
+					if (room->removeWaypoint(it)) {
+						return true;
+					}
+				}
 			}
 		}
 	}
