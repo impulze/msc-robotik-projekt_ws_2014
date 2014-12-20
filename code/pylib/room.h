@@ -2,6 +2,7 @@
 #define ROB_ROOM_H_INCLUDED
 
 #include "coord.h"
+#include "neighbours.h"
 #include "triangle.h"
 
 #include <set>
@@ -24,9 +25,12 @@ public:
 	Coord2D getEndpoint() const;
 
 	bool insertWaypoint(Coord2D const &coord);
-	bool removeWaypoint(std::set<Coord2D>::iterator waypointIterator);
-	std::set<Coord2D> const &getWaypoints() const;
+	bool removeWaypoint(Coord2D const &coord);
+	void clearWaypoints();
+	bool hasWaypoint(Coord2D const &coord) const;
+	std::set<Coord2D> getWaypoints() const;
 
+	NeighboursMap getNeighbours() const;
 	std::vector<Triangle> triangulate() const;
 	std::vector<Coord2D> generatePath() const;
 

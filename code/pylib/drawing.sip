@@ -23,6 +23,12 @@ public:
 		ShowPath
 	};
 
+	enum MouseButton
+	{
+		LeftMouseButton,
+		RightMouseButton
+	};
+
 	Drawing();
 	~Drawing();
 
@@ -32,5 +38,5 @@ public:
 	void setNodes(int amount);
 	void setWaypointModification(WaypointModification modification);
 	void setOption(Option option, bool enabled);
-	void mouseClick(int x, int y);
+	void mouseClick(int x, int y, MouseButton button);
 };

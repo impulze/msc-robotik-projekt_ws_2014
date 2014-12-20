@@ -14,24 +14,9 @@ struct Room::RoomImpl
 		width = image->width();
 		height = image->height();
 		stride = image->type() == Image::IMAGE_TYPE_RGB ? 3 : 4;
+		this->distance = distance;
 
-		std::vector<Polygon2D> const &borderPolygons = image->getBorderPolygons(distance);
-
-		for (std::vector<Polygon2D>::const_iterator it = borderPolygons.begin();
-		     it != borderPolygons.end();
-		     it++) {
-			std::list<CDT::Point> points;
-
-			for (std::size_t i = 0; i < it->size(); i++) {
-				Coord2D coord = (*it)[i];
-				points.push_back(CDT::Point(coord.x, coord.y));
-			}
-
-			Coord2D coord = (*it)[0];
-			points.push_back(CDT::Point(coord.x, coord.y));
-		
-			cdt.insertConstraints(points.begin(), points.end());
-		}
+		reinitializeCDT();
 	}
 
 	RoomImage *image;
@@ -39,8 +24,8 @@ struct Room::RoomImpl
 	unsigned int width;
 	unsigned int height;
 	unsigned char stride;
+	unsigned char distance;
 	MyCDT cdt;
-	std::set<Coord2D> waypoints;
 	Coord2D startpoint;
 	Coord2D endpoint;
 
@@ -51,65 +36,53 @@ struct Room::RoomImpl
 			return false;
 		}
 
-		if (std::find(waypoints.begin(), waypoints.end(), coord) != waypoints.end()) {
-			assert(cdt.pointIsVertex(coord));
-			return true;
-		}
-
-		// TOP PRIO TODO: find out why this sometimes failed when generating 2000+ waypoints
-		// TODO: found out, because internal vertices aren't stored in waypoints
-		assert(!cdt.pointIsVertex(coord));
-
-		if (!cdt.inDomain(coord)) {
-			std::fprintf(stderr, "Waypoint (%d/%d) outside domain.\n", coord.x, coord.y);
+		if (cdt.pointIsVertex(coord)) {
+			std::fprintf(stderr, "Waypoint (%d/%d) already inserted, can't insert.\n", coord.x, coord.y);
 			return false;
 		}
 
-		waypoints.insert(coord);
+		if (!cdt.inDomain(coord)) {
+			std::fprintf(stderr, "Waypoint (%d/%d) outside domain, can't insert.\n", coord.x, coord.y);
+			return false;
+		}
+
 		cdt.insert(coord);
+		assert(cdt.pointIsVertex(coord));
 
 		return true;
 	}
 
-	bool remove(std::set<Coord2D>::iterator waypointIterator)
+	bool remove(Coord2D const &coord)
 	{
-		Coord2D coord = *waypointIterator;
-
-		if (waypointIterator == waypoints.end()) {
-			assert(!cdt.pointIsVertex(coord));
-			std::fprintf(stderr, "Waypoint (%d/%d) not inserted yet, can't remove.\n", coord.x, coord.y);
+		if (coord == startpoint || coord == endpoint) {
+			std::fprintf(stderr, "Waypoint (%d/%d) is startpoint or endpoint, can't remove.\n", coord.x, coord.y);
 			return false;
 		}
 
-		assert(cdt.pointIsVertex(coord));
+		if (!cdt.pointIsVertex(coord)) {
+			std::fprintf(stderr, "Waypoint (%d/%d) not inserted, can't remove.\n", coord.x, coord.y);
+			return false;
+		}
 
-		waypoints.erase(waypointIterator);
 		cdt.remove(coord);
+		assert(!cdt.pointIsVertex(coord));
 
 		return true;
 	}
 
 	bool setStartpoint(Coord2D const &coord)
 	{
-		CDT::Vertex_handle vh;
-		CDT::Face_handle fh;
-
 		if (startpoint == coord) {
 			return true;
 		}
 
+		if (endpoint == coord) {
+			std::fprintf(stderr, "Startpoint (%d/%d) is endpoint, can't insert.\n", coord.x, coord.y);
+			return false;
+		}
+
 		if (!cdt.inDomain(coord)) {
-			std::printf("Startpoint (%d/%d) outside domain.\n", coord.x, coord.y);
-			return false;
-		}
-
-		if (std::find(waypoints.begin(), waypoints.end(), coord) != waypoints.end()) {
-			std::fprintf(stderr, "Can't set startpoint (%d/%d), it's a waypoint.\n", coord.x, coord.y);
-			return false;
-		}
-
-		if (coord == endpoint) {
-			std::fprintf(stderr, "Can't set startpoint (%d/%d), it's the endpoint.\n", coord.x, coord.y);
+			std::fprintf(stderr, "Startpoint (%d/%d) outside domain, can't insert.\n", coord.x, coord.y);
 			return false;
 		}
 
@@ -132,18 +105,14 @@ struct Room::RoomImpl
 			return true;
 		}
 
+		if (startpoint == coord) {
+			std::fprintf(stderr, "Endpoint (%d/%d) is startpoint, can't insert.\n", coord.x, coord.y);
+			return false;
+		}
+
+
 		if (!cdt.inDomain(coord)) {
-			std::printf("Endpoint (%d/%d) outside domain.\n", coord.x, coord.y);
-			return false;
-		}
-
-		if (std::find(waypoints.begin(), waypoints.end(), coord) != waypoints.end()) {
-			std::fprintf(stderr, "Can't set endpoint (%d/%d), it's a waypoint.\n", coord.x, coord.y);
-			return false;
-		}
-
-		if (coord == startpoint) {
-			std::fprintf(stderr, "Can't set endpoint (%d/%d), it's the startpoint.\n", coord.x, coord.y);
+			std::fprintf(stderr, "Endpoint (%d/%d) outside domain, can't insert.\n", coord.x, coord.y);
 			return false;
 		}
 
@@ -164,12 +133,12 @@ struct Room::RoomImpl
 	{
 		std::vector<Coord2D> generatedPath;
 
-		MyCDT::NeighboursMap neighbours = cdt.getNeighbours(waypoints, startpoint, endpoint);
+		NeighboursMap neighbours = cdt.getNeighbours();
 		std::map<Coord2D, int> neighbourToIndexMap;
 
 		int i = 0;
 
-		for (MyCDT::NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
+		for (NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
 			Coord2D coord = it->first;
 
 			if (neighbourToIndexMap.find(coord) == neighbourToIndexMap.end()) {
@@ -177,7 +146,7 @@ struct Room::RoomImpl
 			}
 		}
 
-		for (MyCDT::NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
+		for (NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
 			for (std::set<Coord2D>::const_iterator cit = it->second.begin(); cit != it->second.end(); cit++) {
 				Coord2D checkCoord = *cit;
 				assert(neighbourToIndexMap.find(checkCoord) != neighbourToIndexMap.end());
@@ -186,14 +155,14 @@ struct Room::RoomImpl
 
 		adjacency_list_t adjacency_list(neighbours.size());
 
-		for (MyCDT::NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
+		for (NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
 			Coord2D thisCoord = it->first;
 
 			for (std::set<Coord2D>::const_iterator cit = it->second.begin(); cit != it->second.end(); cit++) {
 				Coord2D thatCoord = *cit;
 
-				double xDistance = thatCoord.x - thisCoord.x;
-				double yDistance = thatCoord.y - thisCoord.y;
+				double xDistance = static_cast<double>(thatCoord.x) - thisCoord.x;
+				double yDistance = static_cast<double>(thatCoord.y) - thisCoord.y;
 				double distance = std::sqrt(xDistance * xDistance + yDistance * yDistance);
 
 				adjacency_list[neighbourToIndexMap[thisCoord]].push_back(neighbor(neighbourToIndexMap[thatCoord], distance));
@@ -225,6 +194,36 @@ struct Room::RoomImpl
 		}
 
 		return generatedPath;
+	}
+
+	void reinitializeCDT()
+	{
+		cdt.clear();
+
+		std::vector<Polygon2D> const &borderPolygons = image->getBorderPolygons(distance);
+
+		for (std::vector<Polygon2D>::const_iterator it = borderPolygons.begin();
+		     it != borderPolygons.end();
+		     it++) {
+			std::list<CDT::Point> points;
+
+			for (std::size_t i = 0; i < it->size(); i++) {
+				Coord2D coord = (*it)[i];
+				points.push_back(CDT::Point(coord.x, coord.y));
+			}
+
+			Coord2D coord = (*it)[0];
+			points.push_back(CDT::Point(coord.x, coord.y));
+
+			cdt.insertConstraints(points.begin(), points.end());
+		}
+
+		Coord2D newStartpoint = startpoint;
+		startpoint = Coord2D(0, 0);
+		Coord2D newEndpoint = endpoint;
+		endpoint = Coord2D(0, 0);
+		setStartpoint(newStartpoint);
+		setEndpoint(newEndpoint);
 	}
 };
 
@@ -280,14 +279,29 @@ bool Room::insertWaypoint(Coord2D const &coord)
 	return p->insert(coord);
 }
 
-bool Room::removeWaypoint(std::set<Coord2D>::iterator waypointIterator)
+bool Room::removeWaypoint(Coord2D const &coord)
 {
-	return p->remove(waypointIterator);
+	return p->remove(coord);
 }
 
-std::set<Coord2D> const &Room::getWaypoints() const
+void Room::clearWaypoints()
 {
-	return p->waypoints;
+	p->reinitializeCDT();
+}
+
+bool Room::hasWaypoint(Coord2D const &coord) const
+{
+	return p->cdt.pointIsVertex(coord);
+}
+
+std::set<Coord2D> Room::getWaypoints() const
+{
+	return p->cdt.getWaypoints();
+}
+
+NeighboursMap Room::getNeighbours() const
+{
+	return p->cdt.getNeighbours();
 }
 
 std::vector<Triangle> Room::triangulate() const

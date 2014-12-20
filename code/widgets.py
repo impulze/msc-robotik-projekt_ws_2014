@@ -53,7 +53,10 @@ class DrawWidget(native.DrawWidget):
 
 	def eventFilter(self, source, event):
 		if event.type() == QtCore.QEvent.MouseButtonRelease:
-			self.drawing.mouseClick(event.x(), event.y())
+			if event.button() == QtCore.Qt.LeftButton:
+				self.drawing.mouseClick(event.x(), event.y(), self.drawing.LeftMouseButton)
+			elif event.button() == QtCore.Qt.RightButton:
+				self.drawing.mouseClick(event.x(), event.y(), self.drawing.RightMouseButton)
 
 		return native.DrawWidget.eventFilter(self, source, event)
 

@@ -77,7 +77,7 @@ public:
 	void setNodes(int amount);
 	void setWaypointModification(Drawing::WaypointModification modification);
 	void setOption(Drawing::Option option, bool enabled);
-	void mouseClick(int x, int y);
+	void mouseClick(int x, int y, Drawing::MouseButton button);
 
 	void initialize();
 	void paint();
@@ -87,6 +87,7 @@ public:
 	bool checkNode(int x, int y);
 	bool delNode(int x, int y);
 	void drawPoint(int x, int y);
+	bool getCoordFromMouseClick(int x, int y, Coord2D &coord);
 
 	Drawing::WaypointModification waypointModification;
 	GLint viewport[4];
@@ -139,11 +140,7 @@ void Drawing::DrawingImpl::fromImage(const char *name)
 
 void Drawing::DrawingImpl::setNodes(int amount)
 {
-	std::set<Coord2D> const &waypoints = room->getWaypoints();
-
-	while (!waypoints.empty()) {
-		room->removeWaypoint(waypoints.begin());
-	}
+	room->clearWaypoints();
 
 	for (int i = 0; i < amount; i++) {
 		int randX = randomAtMost(texture->width() - 1);
@@ -181,7 +178,7 @@ void Drawing::DrawingImpl::setOption(Drawing::Option option, bool enabled)
 	}
 }
 
-void Drawing::DrawingImpl::mouseClick(int x, int y)
+void Drawing::DrawingImpl::mouseClick(int x, int y, Drawing::MouseButton button)
 {
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -208,32 +205,59 @@ void Drawing::DrawingImpl::mouseClick(int x, int y)
 	x = posX;
 	y = posY;
 
-	bool changed = false;
+	if (button == Drawing::LeftMouseButton) {
+		bool changed = false;
 
-	switch (waypointModification) {
-		case Drawing::WaypointAdd:
-			changed = room->insertWaypoint(Coord2D(x, y));
-			break;
+		switch (waypointModification) {
+			case Drawing::WaypointAdd:
+				changed = room->insertWaypoint(Coord2D(x, y));
+				break;
 
-		case Drawing::WaypointDelete:
-			changed = delNode(x, y);
-			break;
+			case Drawing::WaypointDelete:
+				changed = delNode(x, y);
+				break;
 
-		case Drawing::WaypointStart:
-			changed = room->setStartpoint(Coord2D(x, y));
-			break;
+			case Drawing::WaypointStart:
+				changed = room->setStartpoint(Coord2D(x, y));
+				break;
 
-		case Drawing::WaypointEnd:
-			changed = room->setEndpoint(Coord2D(x, y));
-			break;
+			case Drawing::WaypointEnd:
+				changed = room->setEndpoint(Coord2D(x, y));
+				break;
 
-		default:
-			break;
-	}
+			default:
+				break;
+		}
 
-	if (changed) {
-		triangulation = room->triangulate();
-		path = room->generatePath();
+		if (changed) {
+			triangulation = room->triangulate();
+			path = room->generatePath();
+		}
+	} else if (button == Drawing::RightMouseButton) {
+		Coord2D coord;
+
+		if (!getCoordFromMouseClick(x, y, coord)) {
+			return;
+		}
+
+		NeighboursMap neighbours = room->getNeighbours();
+
+		for (NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
+			Coord2D thisCoord(it->first.x, it->first.y);
+
+			if (coord == thisCoord) {
+				for (std::set<Coord2D>::const_iterator cit = it->second.begin(); cit != it->second.end(); cit++) {
+					Coord2D thatCoord(cit->x, cit->y);
+
+					double xDistance = static_cast<double>(thatCoord.x) - thisCoord.x;
+					double yDistance = static_cast<double>(thatCoord.y) - thisCoord.y;
+					double distance = std::sqrt(xDistance * xDistance + yDistance * yDistance);
+
+					printf("distances: %f, %f, %f\n", xDistance, yDistance, distance);
+					printf("neighbour distances to (%d/%d): %g\n", cit->x, cit->y, distance);
+				}
+			}
+		}
 	}
 }
 
@@ -371,12 +395,11 @@ void Drawing::DrawingImpl::paint()
 	if (showPath && path.size() > 0) {
 		glTranslatef(0.0f, 0.0f, 0.2f);
 		// dark-yellow
-		glColor3f(0.7f, 0.7f, 0.0f);
-		//glBegin(GL_LINE_STRIP);
-		glPointSize(1.0f);
-		glBegin(GL_POINTS);
-		for (std::vector<Coord2D>::size_type i = 0; i < path.size() /*- 1*/; i++) {
-#if 0
+		//glColor3f(0.7f, 0.7f, 0.0f);
+		glColor3f(0.2f, 0.2f, 0.2f);
+		glLineWidth(2.0f);
+		glBegin(GL_LINE_STRIP);
+		for (std::vector<Coord2D>::size_type i = 0; i < path.size() - 1; i++) {
 			Coord2D c1;
 			Coord2D c2;
 			Coord2D c3;
@@ -403,10 +426,7 @@ void Drawing::DrawingImpl::paint()
 				}
 
 				glVertex2f(result.x, texture->height() - 1 - result.y);
-				//drawPoint(result.x, texture->height() - 1 - result.y);
 			}
-#endif
-				glVertex2f(path[i].x, texture->height() - 1 - path[i].y);
 		}
 		glEnd();
 	}
@@ -447,25 +467,14 @@ void Drawing::DrawingImpl::freeTexture()
 
 bool Drawing::DrawingImpl::delNode(int x, int y)
 {
-	// the user clicked near or directly into the waypoint
-	int left = std::max(0, x - ROBOT_DIAMETER / 2);
-	int right = std::min(static_cast<int>(texture->width()) - 1, x + ROBOT_DIAMETER / 2);
-	int bottom = std::max(0, y - ROBOT_DIAMETER / 2);
-	int top = std::min(static_cast<int>(texture->height()) - 1, y + ROBOT_DIAMETER / 2);
+	Coord2D coord;
 
-	std::set<Coord2D> const &waypoints = room->getWaypoints();
-	for (std::set<Coord2D>::iterator it = waypoints.begin(); it != waypoints.end(); ++it) {
-		for (int i = bottom; i <= top; i++) {
-			for (int j = left; j <= right; j++) {
-				Coord2D coord(j, i);
+	if (getCoordFromMouseClick(x, y, coord)) {
+		bool result = room->removeWaypoint(coord);
 
-				if (*it == coord) {
-					if (room->removeWaypoint(it)) {
-						return true;
-					}
-				}
-			}
-		}
+		assert(result);
+
+		return result;
 	}
 
 	return false;
@@ -487,6 +496,27 @@ void Drawing::DrawingImpl::drawPoint(int x, int y)
 		glDrawArrays(GL_TRIANGLE_FAN, 0, 301);
 		glTranslatef(-offsetX, -offsetY, 0.0f);
 #endif
+}
+
+bool Drawing::DrawingImpl::getCoordFromMouseClick(int x, int y, Coord2D &coord)
+{
+	// the user clicked near or directly into the waypoint
+	int left = std::max(0, x - ROBOT_DIAMETER / 2);
+	int right = std::min(static_cast<int>(texture->width()) - 1, x + ROBOT_DIAMETER / 2);
+	int bottom = std::max(0, y - ROBOT_DIAMETER / 2);
+	int top = std::min(static_cast<int>(texture->height()) - 1, y + ROBOT_DIAMETER / 2);
+
+	for (int i = bottom; i <= top; i++) {
+		for (int j = left; j <= right; j++) {
+			coord = Coord2D(j, i);
+
+			if (room->hasWaypoint(coord)) {
+				return true;
+			}
+		}
+	}
+
+	return false;
 }
 
 Drawing::Drawing()
@@ -521,9 +551,9 @@ void Drawing::setOption(Option option, bool enabled)
 	p->setOption(option, enabled);
 }
 
-void Drawing::mouseClick(int x, int y)
+void Drawing::mouseClick(int x, int y, MouseButton button)
 {
-	p->mouseClick(x, y);
+	p->mouseClick(x, y, button);
 }
 
 void Drawing::initialize()
