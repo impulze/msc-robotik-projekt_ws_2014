@@ -1,9 +1,13 @@
 #include "dijkstra.h"
-#include "mycdt.h"
 #include "room.h"
 #include "roomimage.h"
+#include "triangulation.h"
 
+#include <set>
+
+#include <cassert>
 #include <cmath>
+#include <cstdio>
 
 struct Room::RoomImpl
 {
@@ -25,7 +29,7 @@ struct Room::RoomImpl
 	unsigned int height;
 	unsigned char stride;
 	unsigned char distance;
-	MyCDT cdt;
+	ConstrainedDelaunayTriangulation cdt;
 	Coord2D startpoint;
 	Coord2D endpoint;
 
@@ -205,17 +209,17 @@ struct Room::RoomImpl
 		for (std::vector<Polygon2D>::const_iterator it = borderPolygons.begin();
 		     it != borderPolygons.end();
 		     it++) {
-			std::list<CDT::Point> points;
+			std::vector<Coord2D> points;
 
 			for (std::size_t i = 0; i < it->size(); i++) {
 				Coord2D coord = (*it)[i];
-				points.push_back(CDT::Point(coord.x, coord.y));
+				points.push_back(coord);
 			}
 
 			Coord2D coord = (*it)[0];
-			points.push_back(CDT::Point(coord.x, coord.y));
+			points.push_back(coord);
 
-			cdt.insertConstraints(points.begin(), points.end());
+			cdt.insertConstraints(points);
 		}
 
 		Coord2D newStartpoint = startpoint;
@@ -296,7 +300,7 @@ bool Room::hasWaypoint(Coord2D const &coord) const
 
 std::set<Coord2D> Room::getWaypoints() const
 {
-	return p->cdt.getWaypoints();
+	return p->cdt.list();
 }
 
 NeighboursMap Room::getNeighbours() const
@@ -306,7 +310,7 @@ NeighboursMap Room::getNeighbours() const
 
 std::vector<Triangle> Room::triangulate() const
 {
-	return p->cdt.triangulate();
+	return p->cdt.getTriangulation();
 }
 
 std::vector<Coord2D> Room::generatePath() const
