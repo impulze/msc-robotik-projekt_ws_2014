@@ -29,7 +29,7 @@ struct Room::RoomImpl
 	unsigned int height;
 	unsigned char stride;
 	unsigned char distance;
-	ConstrainedDelaunayTriangulation cdt;
+	ConstrainedDelaunayTriangulation triangulation;
 	Coord2D startpoint;
 	Coord2D endpoint;
 
@@ -40,18 +40,18 @@ struct Room::RoomImpl
 			return false;
 		}
 
-		if (cdt.pointIsVertex(coord)) {
+		if (triangulation.pointIsVertex(coord)) {
 			std::fprintf(stderr, "Waypoint (%d/%d) already inserted, can't insert.\n", coord.x, coord.y);
 			return false;
 		}
 
-		if (!cdt.inDomain(coord)) {
+		if (!triangulation.inDomain(coord)) {
 			std::fprintf(stderr, "Waypoint (%d/%d) outside domain, can't insert.\n", coord.x, coord.y);
 			return false;
 		}
 
-		cdt.insert(coord);
-		assert(cdt.pointIsVertex(coord));
+		triangulation.insert(coord);
+		assert(triangulation.pointIsVertex(coord));
 
 		return true;
 	}
@@ -63,13 +63,13 @@ struct Room::RoomImpl
 			return false;
 		}
 
-		if (!cdt.pointIsVertex(coord)) {
+		if (!triangulation.pointIsVertex(coord)) {
 			std::fprintf(stderr, "Waypoint (%d/%d) not inserted, can't remove.\n", coord.x, coord.y);
 			return false;
 		}
 
-		cdt.remove(coord);
-		assert(!cdt.pointIsVertex(coord));
+		triangulation.remove(coord);
+		assert(!triangulation.pointIsVertex(coord));
 
 		return true;
 	}
@@ -85,19 +85,19 @@ struct Room::RoomImpl
 			return false;
 		}
 
-		if (!cdt.inDomain(coord)) {
+		if (!triangulation.inDomain(coord)) {
 			std::fprintf(stderr, "Startpoint (%d/%d) outside domain, can't insert.\n", coord.x, coord.y);
 			return false;
 		}
 
 		if (startpoint != Coord2D(0, 0)) {
-			assert(cdt.pointIsVertex(startpoint));
-			cdt.remove(startpoint);
+			assert(triangulation.pointIsVertex(startpoint));
+			triangulation.remove(startpoint);
 		}
 
-		assert(!cdt.pointIsVertex(startpoint));
+		assert(!triangulation.pointIsVertex(startpoint));
 
-		cdt.insert(coord);
+		triangulation.insert(coord);
 		startpoint = coord;
 
 		return true;
@@ -115,19 +115,19 @@ struct Room::RoomImpl
 		}
 
 
-		if (!cdt.inDomain(coord)) {
+		if (!triangulation.inDomain(coord)) {
 			std::fprintf(stderr, "Endpoint (%d/%d) outside domain, can't insert.\n", coord.x, coord.y);
 			return false;
 		}
 
 		if (endpoint != Coord2D(0, 0)) {
-			assert(cdt.pointIsVertex(endpoint));
-			cdt.remove(endpoint);
+			assert(triangulation.pointIsVertex(endpoint));
+			triangulation.remove(endpoint);
 		}
 
-		assert(!cdt.pointIsVertex(endpoint));
+		assert(!triangulation.pointIsVertex(endpoint));
 
-		cdt.insert(coord);
+		triangulation.insert(coord);
 		endpoint = coord;
 
 		return true;
@@ -170,7 +170,7 @@ struct Room::RoomImpl
 	{
 		std::vector<Coord2D> generatedPath;
 
-		NeighboursMap neighbours = cdt.getNeighbours();
+		NeighboursMap neighbours = triangulation.getNeighbours();
 		std::map<Coord2D, int> neighbourToIndexMap;
 
 		int i = 0;
@@ -235,7 +235,7 @@ struct Room::RoomImpl
 
 	void reinitializeCDT()
 	{
-		cdt.clear();
+		triangulation.clear();
 
 		std::vector<Polygon2D> const &borderPolygons = image->getBorderPolygons(distance);
 
@@ -252,7 +252,7 @@ struct Room::RoomImpl
 			Coord2D coord = (*it)[0];
 			points.push_back(coord);
 
-			cdt.insertConstraints(points);
+			triangulation.insertConstraints(points);
 		}
 
 		Coord2D newStartpoint = startpoint;
@@ -328,17 +328,17 @@ void Room::clearWaypoints()
 
 bool Room::hasWaypoint(Coord2D const &coord) const
 {
-	return p->cdt.pointIsVertex(coord);
+	return p->triangulation.pointIsVertex(coord);
 }
 
 std::set<Coord2D> Room::getWaypoints() const
 {
-	return p->cdt.list();
+	return p->triangulation.list();
 }
 
 NeighboursMap Room::getNeighbours() const
 {
-	return p->cdt.getNeighbours();
+	return p->triangulation.getNeighbours();
 }
 
 std::vector< std::vector<Edge> > Room::getEdges() const
@@ -348,7 +348,7 @@ std::vector< std::vector<Edge> > Room::getEdges() const
 
 std::vector<Triangle> Room::triangulate() const
 {
-	return p->cdt.getTriangulation();
+	return p->triangulation.getTriangulation();
 }
 
 std::vector<Coord2D> Room::generatePath() const
