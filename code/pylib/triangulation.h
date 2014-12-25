@@ -8,6 +8,28 @@
 #include <vector>
 #include <set>
 
+class DelaunayTriangulation
+{
+public:
+	DelaunayTriangulation();
+
+	NeighboursMap getNeighbours() const;
+	std::vector<Triangle> getTriangulation() const;
+
+	void insert(Coord2D const &coord);
+	void remove(Coord2D const &coord);
+	std::set<Coord2D> list() const;
+	void clear();
+
+	// check before with new algorithm
+	//bool inDomain(Coord2D const &coord);
+	bool pointIsVertex(Coord2D const &coord);
+
+private:
+	class DelaunayTriangulationImpl;
+	DelaunayTriangulationImpl *p;
+};
+
 class ConstrainedDelaunayTriangulation
 {
 public:

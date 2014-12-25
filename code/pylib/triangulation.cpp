@@ -1,6 +1,7 @@
 #include "triangulation.h"
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+#include <CGAL/Delaunay_triangulation_2.h>
 #include <CGAL/Constrained_Delaunay_triangulation_2.h>
 
 #include <list>
@@ -92,7 +93,131 @@ namespace {
 	typedef CGAL::Triangulation_data_structure_2<VertexBase, TDSFaceBase> TDS;
 	typedef CGAL::Exact_predicates_tag CDTIntersectionTag;
 	typedef CGAL::Constrained_Delaunay_triangulation_2<Kernel, TDS, CDTIntersectionTag> CDT;
+	typedef CGAL::Delaunay_triangulation_2<Kernel> DT;
 } // end of private namespace
+
+class DelaunayTriangulation::DelaunayTriangulationImpl
+{
+public:
+	DT dt;
+
+	void clear()
+	{
+		dt.clear();
+	}
+
+	std::set<Coord2D> list() const
+	{
+		std::set<Coord2D> waypoints;
+
+		for (DT::Finite_vertices_iterator vi = dt.finite_vertices_begin(); vi != dt.finite_vertices_end(); vi++) {
+			Coord2D c = Coord2D(vi->point().x(), vi->point().y());
+
+			waypoints.insert(c);
+		}
+
+		return waypoints;
+	}
+
+	NeighboursMap getNeighbours() const
+	{
+		NeighboursMap neighbours;
+
+		for (DT::Finite_vertices_iterator vi = dt.finite_vertices_begin(); vi != dt.finite_vertices_end(); vi++) {
+			Coord2D c = Coord2D(vi->point().x(), vi->point().y());
+
+			DT::Edge_circulator ec = dt.incident_edges(vi);
+			DT::Edge_circulator ec_done = ec;
+			std::set<Coord2D> thisNeighbours;
+
+			do {
+				bool addNeighbour = false;
+
+				if (!dt.is_infinite(ec)) {
+					addNeighbour = true;
+				}
+
+				if (addNeighbour) {
+					DT::Segment segment = dt.segment(ec);
+					Coord2D c0(segment.point(0).x(), segment.point(0).y());
+					Coord2D c1(segment.point(1).x(), segment.point(1).y());
+
+
+					thisNeighbours.insert(c0 == c ? c1 : c0);
+				}
+
+				ec++;
+			} while (ec != ec_done);
+
+			neighbours[c] = thisNeighbours;
+		}
+
+		return neighbours;
+	}
+
+	void insert(Coord2D const &coord)
+	{
+		dt.insert(DT::Point(coord.x, coord.y));
+	}
+
+	void remove(Coord2D const &coord)
+	{
+		DT::Point p(coord.x, coord.y);
+
+		for (DT::Finite_faces_iterator fit = dt.finite_faces_begin();
+		     fit != dt.finite_faces_end();
+		     ++fit) {
+			for (int i = 0; i < 3; i++) {
+				if (fit->vertex(i)->point() == p) {
+					dt.remove(fit->vertex(i));
+					return;
+				}
+			}
+		}
+
+		assert(false);
+	}
+
+	bool pointIsVertex(Coord2D const &coord)
+	{
+		DT::Point p(coord.x, coord.y);
+
+		for (DT::Finite_faces_iterator fit = dt.finite_faces_begin();
+		     fit != dt.finite_faces_end();
+		     ++fit) {
+			for (int i = 0; i < 3; i++) {
+				if (fit->vertex(i)->point() == p) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	std::vector<Triangle> getTriangulation()
+	{
+		std::vector<Triangle> triangulation;
+
+		for (DT::Finite_faces_iterator fit = dt.finite_faces_begin();
+		     fit != dt.finite_faces_end();
+		     ++fit) {
+			Triangle triangle;
+
+			DT::Point p0 = fit->vertex(0)->point();
+			DT::Point p1 = fit->vertex(1)->point();
+			DT::Point p2 = fit->vertex(2)->point();
+
+			triangle[0] = Coord2D(p0.x(), p0.y());
+			triangle[1] = Coord2D(p1.x(), p1.y());
+			triangle[2] = Coord2D(p2.x(), p2.y());
+
+			triangulation.push_back(triangle);
+		}
+
+		return triangulation;
+	}
+};
 
 class ConstrainedDelaunayTriangulation::ConstrainedDelaunayTriangulationImpl
 {
@@ -199,7 +324,6 @@ public:
 
 		return false;
 	}
-
 
 	bool inDomain(Coord2D const &coord)
 	{
@@ -336,6 +460,46 @@ public:
 		}
 	}
 };
+
+DelaunayTriangulation::DelaunayTriangulation()
+	: p(new DelaunayTriangulationImpl)
+{
+}
+
+NeighboursMap DelaunayTriangulation::getNeighbours() const
+{
+	return p->getNeighbours();
+}
+
+std::vector<Triangle> DelaunayTriangulation::getTriangulation() const
+{
+	return p->getTriangulation();
+}
+
+void DelaunayTriangulation::insert(Coord2D const &coord)
+{
+	p->insert(coord);
+}
+
+void DelaunayTriangulation::remove(Coord2D const &coord)
+{
+	p->remove(coord);
+}
+
+std::set<Coord2D> DelaunayTriangulation::list() const
+{
+	return p->list();
+}
+
+void DelaunayTriangulation::clear()
+{
+	p->clear();
+}
+
+bool DelaunayTriangulation::pointIsVertex(Coord2D const &coord)
+{
+	return p->pointIsVertex(coord);
+}
 
 ConstrainedDelaunayTriangulation::ConstrainedDelaunayTriangulation()
 	: p(new ConstrainedDelaunayTriangulationImpl)
