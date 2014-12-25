@@ -2,6 +2,7 @@
 #define ROB_ROOM_H_INCLUDED
 
 #include "coord.h"
+#include "edge.h"
 #include "neighbours.h"
 #include "triangle.h"
 
@@ -31,6 +32,7 @@ public:
 	std::set<Coord2D> getWaypoints() const;
 
 	NeighboursMap getNeighbours() const;
+	std::vector< std::vector<Edge> > getEdges() const;
 	std::vector<Triangle> triangulate() const;
 	std::vector<Coord2D> generatePath() const;
 

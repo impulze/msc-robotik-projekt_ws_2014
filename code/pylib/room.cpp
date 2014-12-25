@@ -133,6 +133,39 @@ struct Room::RoomImpl
 		return true;
 	}
 
+	std::vector< std::vector<Edge> > getEdges() const
+	{
+		std::vector<Polygon2D> const &borderPolygons = image->getBorderPolygons(distance);
+
+		std::vector< std::vector<Edge> > edges;
+
+		for (std::vector<Polygon2D>::const_iterator it = borderPolygons.begin();
+		     it != borderPolygons.end();
+		     it++) {
+			std::vector<Edge> polygonEdges;
+			std::vector<Coord2D>::const_iterator coordIterator = it->begin();
+			std::vector<Coord2D>::const_iterator lastCoordIterator = coordIterator;
+
+			++coordIterator;
+
+			while (coordIterator != it->end()) {
+				Edge edge(*lastCoordIterator, *coordIterator);
+				polygonEdges.push_back(edge);
+				lastCoordIterator = coordIterator;
+				++coordIterator;
+			}
+
+			if (it->begin() != it->end()) {
+				Edge lastEdge(*lastCoordIterator, *(it->begin()));
+				polygonEdges.push_back(lastEdge);
+			}
+
+			edges.push_back(polygonEdges);
+		}
+
+		return edges;
+	}
+
 	std::vector<Coord2D> generatePath()
 	{
 		std::vector<Coord2D> generatedPath;
@@ -306,6 +339,11 @@ std::set<Coord2D> Room::getWaypoints() const
 NeighboursMap Room::getNeighbours() const
 {
 	return p->cdt.getNeighbours();
+}
+
+std::vector< std::vector<Edge> > Room::getEdges() const
+{
+	return p->getEdges();
 }
 
 std::vector<Triangle> Room::triangulate() const
