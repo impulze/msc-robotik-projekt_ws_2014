@@ -396,6 +396,27 @@ public:
 		mark();
 	}
 
+	std::vector<Edge> getConstrainedEdges() const
+	{
+		std::vector<Edge> edges;
+
+		for (CDT::Finite_edges_iterator it = cdt.finite_edges_begin();
+		     it != cdt.finite_edges_end();
+		     it++) {
+			if (!cdt.is_constrained(*it)) {
+				continue;
+			}
+
+			CDT::Segment segment = cdt.segment(*it);
+			Coord2D start(segment.point(0).x(), segment.point(0).y());
+			Coord2D end(segment.point(1).x(), segment.point(1).y());
+			Edge edge(start, end);
+			edges.push_back(edge);
+		}
+
+		return edges;
+	}
+
 	void mark()
 	{
 		// mark faces in/out of domain
@@ -549,4 +570,9 @@ bool ConstrainedDelaunayTriangulation::pointIsVertex(Coord2D const &coord)
 void ConstrainedDelaunayTriangulation::insertConstraints(std::vector<Coord2D> const &points)
 {
 	p->insertConstraints(points);
+}
+
+std::vector<Edge> ConstrainedDelaunayTriangulation::getConstrainedEdges() const
+{
+	return p->getConstrainedEdges();
 }

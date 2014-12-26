@@ -2,6 +2,7 @@
 #define ROB_TRIANGULATION_H_INCLUDED
 
 #include "coord.h"
+#include "edge.h"
 #include "neighbours.h"
 #include "triangle.h"
 
@@ -47,6 +48,7 @@ public:
 	bool pointIsVertex(Coord2D const &coord);
 
 	void insertConstraints(std::vector<Coord2D> const &points);
+	std::vector<Edge> getConstrainedEdges() const;
 
 private:
 	class ConstrainedDelaunayTriangulationImpl;
