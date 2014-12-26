@@ -20,7 +20,25 @@ struct Room::RoomImpl
 		stride = image->type() == Image::IMAGE_TYPE_RGB ? 3 : 4;
 		this->distance = distance;
 
-		reinitializeCDT();
+		std::vector<Polygon2D> const &borderPolygons = image->getBorderPolygons(distance);
+
+		for (std::vector<Polygon2D>::const_iterator it = borderPolygons.begin();
+		     it != borderPolygons.end();
+		     it++) {
+			std::vector<Coord2D> points;
+
+			for (std::size_t i = 0; i < it->size(); i++) {
+				Coord2D coord = (*it)[i];
+				points.push_back(coord);
+			}
+
+			Coord2D coord = (*it)[0];
+			points.push_back(coord);
+
+			roomTriangulation.insertConstraints(points);
+		}
+
+		reinitializeTriangulation();
 	}
 
 	RoomImage *image;
@@ -30,6 +48,7 @@ struct Room::RoomImpl
 	unsigned char stride;
 	unsigned char distance;
 	ConstrainedDelaunayTriangulation triangulation;
+	ConstrainedDelaunayTriangulation roomTriangulation;
 	Coord2D startpoint;
 	Coord2D endpoint;
 
@@ -45,7 +64,7 @@ struct Room::RoomImpl
 			return false;
 		}
 
-		if (!triangulation.inDomain(coord)) {
+		if (!roomTriangulation.inDomain(coord)) {
 			std::fprintf(stderr, "Waypoint (%d/%d) outside domain, can't insert.\n", coord.x, coord.y);
 			return false;
 		}
@@ -85,7 +104,7 @@ struct Room::RoomImpl
 			return false;
 		}
 
-		if (!triangulation.inDomain(coord)) {
+		if (!roomTriangulation.inDomain(coord)) {
 			std::fprintf(stderr, "Startpoint (%d/%d) outside domain, can't insert.\n", coord.x, coord.y);
 			return false;
 		}
@@ -115,7 +134,7 @@ struct Room::RoomImpl
 		}
 
 
-		if (!triangulation.inDomain(coord)) {
+		if (!roomTriangulation.inDomain(coord)) {
 			std::fprintf(stderr, "Endpoint (%d/%d) outside domain, can't insert.\n", coord.x, coord.y);
 			return false;
 		}
@@ -135,7 +154,11 @@ struct Room::RoomImpl
 
 	std::vector< std::vector<Edge> > getEdges() const
 	{
+		// this array below distinguishes between big room (first) and holes
 		std::vector<Polygon2D> const &borderPolygons = image->getBorderPolygons(distance);
+
+		// this array doesn't distinguish between big room and holes
+		//std::vector<Edge> constraints = roomTriangulation.getConstrainedEdges();
 
 		std::vector< std::vector<Edge> > edges;
 
@@ -233,7 +256,7 @@ struct Room::RoomImpl
 		return generatedPath;
 	}
 
-	void reinitializeCDT()
+	void reinitializeTriangulation()
 	{
 		triangulation.clear();
 
@@ -323,7 +346,7 @@ bool Room::removeWaypoint(Coord2D const &coord)
 
 void Room::clearWaypoints()
 {
-	p->reinitializeCDT();
+	p->reinitializeTriangulation();
 }
 
 bool Room::hasWaypoint(Coord2D const &coord) const
