@@ -38,6 +38,8 @@ struct Room::RoomImpl
 			roomTriangulation.insertConstraints(points);
 		}
 
+		edges = calculateEdges();
+
 		reinitializeTriangulation();
 	}
 
@@ -51,6 +53,7 @@ struct Room::RoomImpl
 	ConstrainedDelaunayTriangulation roomTriangulation;
 	Coord2D startpoint;
 	Coord2D endpoint;
+	std::vector< std::vector<Edge> > edges;
 
 	bool insert(Coord2D const &coord)
 	{
@@ -152,7 +155,7 @@ struct Room::RoomImpl
 		return true;
 	}
 
-	std::vector< std::vector<Edge> > getEdges() const
+	std::vector< std::vector<Edge> > calculateEdges() const
 	{
 		// this array below distinguishes between big room (first) and holes
 		std::vector<Polygon2D> const &borderPolygons = image->getBorderPolygons(distance);
@@ -187,6 +190,72 @@ struct Room::RoomImpl
 		}
 
 		return edges;
+	}
+
+	bool intersectsEdges(Edge const &checkEdge_)
+	{
+		Edge checkEdge(checkEdge_);
+
+		if (checkEdge.end.x < checkEdge.start.x) {
+			std::swap(checkEdge.start.x, checkEdge.end.x);
+		}
+
+		if (checkEdge.end.y < checkEdge.start.y) {
+			std::swap(checkEdge.start.y, checkEdge.end.y);
+		}
+
+		for (std::vector< std::vector<Edge> >::const_iterator it = edges.begin();
+		     it != edges.end();
+		     it++) {
+			int x12 = checkEdge.start.x - checkEdge.end.x;
+			int y12 = checkEdge.start.y - checkEdge.end.y;
+
+			for (std::vector<Edge>::const_iterator eit = it->begin(); eit != it->end(); eit++) {
+				Edge edge = *eit;
+
+				if (edge.end.x < edge.start.x) {
+					std::swap(edge.start.x, edge.end.x);
+				}
+
+				if (edge.end.y < edge.start.y) {
+					std::swap(edge.start.y, edge.end.y);
+				}
+
+				int x34 = edge.start.x - edge.end.x;
+				int y34 = edge.start.y - edge.end.y;
+				int c = x12 * y34 - y12 * x34;
+
+				if (c == 0) {
+					continue;
+				}
+
+				int a = checkEdge.start.x * checkEdge.end.y - checkEdge.start.y * checkEdge.end.x;
+				int b = edge.start.x * edge.end.y - edge.start.y * edge.end.x;
+
+				float x = (a * x34 - b * x12) / (1.0 * c);
+				float y = (a * y34 - b * y12) / (1.0 * c);
+
+				if (x < checkEdge.start.x || x > checkEdge.end.x) {
+					continue;
+				}
+
+				if (x < edge.start.x || x > edge.end.x) {
+					continue;
+				}
+
+				if (y < checkEdge.start.y || y > checkEdge.end.y) {
+					continue;
+				}
+
+				if (y < edge.start.y || y > edge.end.y) {
+					continue;
+				}
+
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	std::vector<Coord2D> generatePath()
@@ -366,7 +435,12 @@ NeighboursMap Room::getNeighbours() const
 
 std::vector< std::vector<Edge> > Room::getEdges() const
 {
-	return p->getEdges();
+	return p->edges;
+}
+
+bool Room::intersectsEdges(Edge const &checkEdge) const
+{
+	return p->intersectsEdges(checkEdge);
 }
 
 std::vector<Triangle> Room::triangulate() const

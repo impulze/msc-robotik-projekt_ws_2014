@@ -33,6 +33,7 @@ public:
 
 	NeighboursMap getNeighbours() const;
 	std::vector< std::vector<Edge> > getEdges() const;
+	bool intersectsEdges(Edge const &checkEdge) const;
 	std::vector<Triangle> triangulate() const;
 	std::vector<Coord2D> generatePath() const;
 
