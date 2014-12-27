@@ -44,8 +44,8 @@ public:
 	std::set<Coord2D> list() const;
 	void clear();
 
-	bool inDomain(Coord2D const &coord);
-	bool pointIsVertex(Coord2D const &coord);
+	bool inDomain(float x, float y) const;
+	bool pointIsVertex(Coord2D const &coord) const;
 
 	void insertConstraints(std::vector<Coord2D> const &points);
 	std::vector<Edge> getConstrainedEdges() const;

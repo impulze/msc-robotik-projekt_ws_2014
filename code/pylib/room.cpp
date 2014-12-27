@@ -9,6 +9,12 @@
 #include <cmath>
 #include <cstdio>
 
+struct IntersectionPoint
+{
+	float x;
+	float y;
+};
+
 struct Room::RoomImpl
 {
 	RoomImpl(std::string const &filename, unsigned char distance)
@@ -94,7 +100,7 @@ struct Room::RoomImpl
 			return false;
 		}
 
-		if (!roomTriangulation.inDomain(coord)) {
+		if (!roomTriangulation.inDomain(coord.x, coord.y)) {
 			std::fprintf(stderr, "Waypoint (%d/%d) outside domain, can't insert.\n", coord.x, coord.y);
 			return false;
 		}
@@ -134,7 +140,7 @@ struct Room::RoomImpl
 			return false;
 		}
 
-		if (!roomTriangulation.inDomain(coord)) {
+		if (!roomTriangulation.inDomain(coord.x, coord.y)) {
 			std::fprintf(stderr, "Startpoint (%d/%d) outside domain, can't insert.\n", coord.x, coord.y);
 			return false;
 		}
@@ -163,7 +169,7 @@ struct Room::RoomImpl
 			return false;
 		}
 
-		if (!roomTriangulation.inDomain(coord)) {
+		if (!roomTriangulation.inDomain(coord.x, coord.y)) {
 			std::fprintf(stderr, "Endpoint (%d/%d) outside domain, can't insert.\n", coord.x, coord.y);
 			return false;
 		}
@@ -183,69 +189,161 @@ struct Room::RoomImpl
 
 	bool intersectsEdges(Edge const &checkEdge_) const
 	{
+		bool doPrint_ = false;
+
+		//room->insertWaypoint(Coord2D(352, 277));
+		//room->insertWaypoint(Coord2D(401, 271));
+
+		if (checkEdge_.start.x == 352 && checkEdge_.start.y == 277 &&
+		    checkEdge_.end.x == 401 && checkEdge_.end.y == 271) {
+			doPrint_ = true;
+		}
+
+		doPrint_ = true;
+
 		Edge checkEdge(checkEdge_);
 
-		if (checkEdge.end.x < checkEdge.start.x) {
-			std::swap(checkEdge.start.x, checkEdge.end.x);
-		}
+		int r[2] = {
+			static_cast<int>(checkEdge.end.x) - static_cast<int>(checkEdge.start.x),
+			static_cast<int>(checkEdge.end.y) - static_cast<int>(checkEdge.start.y)
+		};
 
-		if (checkEdge.end.y < checkEdge.start.y) {
-			std::swap(checkEdge.start.y, checkEdge.end.y);
-		}
+		if (doPrint_) printf("checking: %d/%d->%d/%d\n", checkEdge.start.x, checkEdge.start.y, checkEdge.end.x, checkEdge.end.y);
 
 		for (std::vector< std::vector<Edge> >::const_iterator it = edges.begin();
 		     it != edges.end();
 		     it++) {
-			int x12 = checkEdge.start.x - checkEdge.end.x;
-			int y12 = checkEdge.start.y - checkEdge.end.y;
+			std::vector<IntersectionPoint> intersectionPoints;
 
 			for (std::vector<Edge>::const_iterator eit = it->begin(); eit != it->end(); eit++) {
 				Edge edge = *eit;
 
-				if (edge.end.x < edge.start.x) {
-					std::swap(edge.start.x, edge.end.x);
+				int s[2] = {
+					static_cast<int>(edge.end.x) - static_cast<int>(edge.start.x),
+					static_cast<int>(edge.end.y) - static_cast<int>(edge.start.y)
+				};
+
+				//bool doPrint = doPrint_;
+				bool doPrint = true;
+
+				//if (doPrint && !(edge.start.x == 517 && edge.start.y == 310 && edge.end.x == 413 && edge.end.y == 310)) {
+				if (doPrint && !(edge.start.x == 413 && edge.start.y == 277 && edge.end.x == 298 && edge.end.y == 277)) {
+					doPrint = false;
 				}
 
-				if (edge.end.y < edge.start.y) {
-					std::swap(edge.start.y, edge.end.y);
+				if (doPrint) printf("with: %d/%d->%d/%d\n", edge.start.x, edge.start.y, edge.end.x, edge.end.y);
+
+				float x, y;
+
+				Coord2D diffPoint(edge.start.x - checkEdge.start.x, edge.start.y - checkEdge.start.y);
+				int diffPointCrossR = diffPoint.x * r[1] - diffPoint.y * r[0];
+				int rCrossS = r[0] * s[1] - r[1] * s[0];
+
+				if (rCrossS == 0) {
+					if (diffPointCrossR == 0) {
+						if (doPrint) printf("lines are collinear\n");
+
+						int diffPointMultR = diffPoint.x * r[0] + diffPoint.y * r[1];
+						int diffPointMultS = diffPoint.x * s[0] + diffPoint.y * s[1];
+						int rMultR = r[0] * r[0] + r[1] * r[1];
+						int sMultS = s[0] * s[0] + s[1] * s[1];
+
+						if ((0 <= diffPointMultR) && (diffPointMultR <= rMultR)) {
+							if (doPrint) printf("and overlapping\n");
+							return true;
+						} else if ((0 <= diffPointMultS) && (diffPointMultS <= sMultS)) {
+							if (doPrint) printf("and overlapping\n");
+							return true;
+						} else {
+							if (doPrint) printf("and disjoint\n");
+							continue;
+						}
+					} else {
+						if (doPrint) printf("and parallel and non-intersecting\n");
+						continue;
+					}
+				} else {
+					int diffPointCrossS = diffPoint.x * s[1] - diffPoint.y * s[0];
+					float u = diffPointCrossR / static_cast<float>(rCrossS);
+					float t = diffPointCrossS / static_cast<float>(rCrossS);
+
+					if ((0 <= u) && (u <= 1) && (0 <= t) && (t <= 1)) {
+						if (doPrint) printf("and intersecting\n");
+						x = checkEdge.start.x + t * r[0];
+						y = checkEdge.start.y + t * r[1];
+					} else {
+						if (doPrint) printf("and non-intersecting\n");
+						continue;
+					}
 				}
 
-				int x34 = edge.start.x - edge.end.x;
-				int y34 = edge.start.y - edge.end.y;
-				int c = x12 * y34 - y12 * x34;
+				int maxCheckX = std::max(checkEdge.start.x, checkEdge.end.x);
+				int maxCheckY = std::max(checkEdge.start.y, checkEdge.end.y);
+				int minCheckX = std::min(checkEdge.start.x, checkEdge.end.x);
+				int minCheckY = std::min(checkEdge.start.y, checkEdge.end.y);
 
-				if (c == 0) {
+				int maxX = std::max(edge.start.x, edge.end.x);
+				int maxY = std::max(edge.start.y, edge.end.y);
+				int minX = std::min(edge.start.x, edge.end.x);
+				int minY = std::min(edge.start.y, edge.end.y);
+
+				if (x < minCheckX || x > maxCheckX) {
 					continue;
 				}
 
-				int a = checkEdge.start.x * checkEdge.end.y - checkEdge.start.y * checkEdge.end.x;
-				int b = edge.start.x * edge.end.y - edge.start.y * edge.end.x;
-
-				float x = (a * x34 - b * x12) / (1.0 * c);
-				float y = (a * y34 - b * y12) / (1.0 * c);
-
-				if (x < checkEdge.start.x || x > checkEdge.end.x) {
+				if (x < minX || x > maxX) {
 					continue;
 				}
 
-				if (x < edge.start.x || x > edge.end.x) {
+				if (y < minCheckY || y > maxCheckY) {
 					continue;
 				}
 
-				if (y < checkEdge.start.y || y > checkEdge.end.y) {
+				if (y < minY || y > maxY) {
 					continue;
 				}
 
-				if (y < edge.start.y || y > edge.end.y) {
-					continue;
+				if (doPrint) printf("intersect at %f/%f\n", x, y);
+
+				IntersectionPoint intersectionPoint;
+
+				intersectionPoint.x = x;
+				intersectionPoint.y = y;
+
+				intersectionPoints.push_back(intersectionPoint);
+			}
+
+			if (doPrint_) printf("intersections: %d\n", intersectionPoints.size());
+			if (intersectionPoints.size() >= 2) {
+				for (size_t i = 0; i < intersectionPoints.size(); i++) {
+					size_t next = i + 1;
+
+					if (next == intersectionPoints.size()) {
+						next = 0;
+					}
+
+					IntersectionPoint start(intersectionPoints[i]);
+					IntersectionPoint end(intersectionPoints[next]);
+
+					float checkX = (start.x + end.x) / 2.0;
+					float checkY = (start.y + end.y) / 2.0;
+
+					if (!roomTriangulation.inDomain(checkX, checkY)) {
+						printf("not in domain: %f/%f\n", checkX, checkY);
+						return true;
+					}
 				}
 
-				if (x == checkEdge.start.x && y == checkEdge.start.y) {
-					continue;
-				}
+				return false;
+			}
 
-				if (x == checkEdge.end.x && y == checkEdge.end.y) {
-					continue;
+			if (!intersectionPoints.empty()) {
+				float x = intersectionPoints[0].x;
+				float y = intersectionPoints[0].y;
+
+				if ((x == checkEdge.start.x && y == checkEdge.start.y) ||
+				    (x == checkEdge.end.x && y == checkEdge.end.y)) {
+					return false;
 				}
 
 				return true;

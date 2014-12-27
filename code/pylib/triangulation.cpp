@@ -325,9 +325,9 @@ public:
 		return false;
 	}
 
-	bool inDomain(Coord2D const &coord)
+	bool inDomain(float x, float y)
 	{
-		CDT::Point p(coord.x, coord.y);
+		CDT::Point p(x, y);
 
 		for (CDT::Finite_faces_iterator fit = cdt.finite_faces_begin();
 		     fit != cdt.finite_faces_end();
@@ -557,12 +557,12 @@ void ConstrainedDelaunayTriangulation::clear()
 	p->clear();
 }
 
-bool ConstrainedDelaunayTriangulation::inDomain(Coord2D const &coord)
+bool ConstrainedDelaunayTriangulation::inDomain(float x, float y) const
 {
-	return p->inDomain(coord);
+	return p->inDomain(x, y);
 }
 
-bool ConstrainedDelaunayTriangulation::pointIsVertex(Coord2D const &coord)
+bool ConstrainedDelaunayTriangulation::pointIsVertex(Coord2D const &coord) const
 {
 	return p->pointIsVertex(coord);
 }

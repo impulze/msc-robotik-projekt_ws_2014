@@ -329,6 +329,7 @@ void Drawing::DrawingImpl::initialize()
 	room->insertWaypoint(Coord2D(352, 277));
 	room->insertWaypoint(Coord2D(401, 271));
 	room->setStartpoint(Coord2D(410, 255));
+	//room->setStartpoint(Coord2D(557, 317));
 	room->setEndpoint(Coord2D(330, 287));
 
 	triangulation = room->triangulate();
