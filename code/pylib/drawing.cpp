@@ -255,6 +255,7 @@ void Drawing::DrawingImpl::mouseClick(int x, int y, Drawing::MouseButton button)
 						Edge edge(neighbourToShow, *sit);
 						// store if this edge intersects any polygon boundary edge
 						neighbourToShowNeighbours[*sit] = room->intersectsEdges(edge);
+						printf("intersects %d\n", neighbourToShowNeighbours[*sit]);
 					}
 				} else {
 					neighbourToShowNeighbours.clear();
@@ -324,6 +325,11 @@ void Drawing::DrawingImpl::initialize()
 			break;
 		}
 	}
+
+	room->insertWaypoint(Coord2D(352, 277));
+	room->insertWaypoint(Coord2D(401, 271));
+	room->setStartpoint(Coord2D(410, 255));
+	room->setEndpoint(Coord2D(330, 287));
 
 	triangulation = room->triangulate();
 	path = room->generatePath();
@@ -405,6 +411,25 @@ void Drawing::DrawingImpl::paint()
 			drawPoint(it->x, it->y);
 		}
 	}
+
+#if 0
+	for (std::vector< std::vector<Edge> >::const_iterator it = edges.begin(); it != edges.end(); it++) {
+		unsigned char c1, c2, c3;
+
+		c1 = rand() % 256;
+		c2 = rand() % 256;
+		c3 = rand() % 256;
+
+		glColor3b(c1, c2, c3);
+		glBegin(GL_LINES);
+		for (std::vector<Edge>::const_iterator eit = it->begin(); eit != it->end(); eit++) {
+			Edge edge = *eit;
+			glVertex2f(edge.start.x, texture->height() - 1 - edge.start.y);
+			glVertex2f(edge.end.x, texture->height() - 1 - edge.end.y);
+		}
+		glEnd();
+	}
+#endif
 
 	for (std::map<Coord2D, bool>::const_iterator it = neighbourToShowNeighbours.begin();
 	     it != neighbourToShowNeighbours.end();
