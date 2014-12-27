@@ -20,7 +20,11 @@ struct Room::RoomImpl
 		stride = image->type() == Image::IMAGE_TYPE_RGB ? 3 : 4;
 		this->distance = distance;
 
+		// this array below distinguishes between big room (first) and holes
 		std::vector<Polygon2D> const &borderPolygons = image->getBorderPolygons(distance);
+
+		// this array doesn't distinguish between big room and holes
+		//std::vector<Edge> constraints = roomTriangulation.getConstrainedEdges();
 
 		for (std::vector<Polygon2D>::const_iterator it = borderPolygons.begin();
 		     it != borderPolygons.end();
@@ -38,7 +42,30 @@ struct Room::RoomImpl
 			roomTriangulation.insertConstraints(points);
 		}
 
-		edges = calculateEdges();
+
+		for (std::vector<Polygon2D>::const_iterator it = borderPolygons.begin();
+		     it != borderPolygons.end();
+		     it++) {
+			std::vector<Edge> polygonEdges;
+			std::vector<Coord2D>::const_iterator coordIterator = it->begin();
+			std::vector<Coord2D>::const_iterator lastCoordIterator = coordIterator;
+
+			++coordIterator;
+
+			while (coordIterator != it->end()) {
+				Edge edge(*lastCoordIterator, *coordIterator);
+				polygonEdges.push_back(edge);
+				lastCoordIterator = coordIterator;
+				++coordIterator;
+			}
+
+			if (it->begin() != it->end()) {
+				Edge lastEdge(*lastCoordIterator, *(it->begin()));
+				polygonEdges.push_back(lastEdge);
+			}
+
+			edges.push_back(polygonEdges);
+		}
 
 		reinitializeTriangulation();
 	}
@@ -154,44 +181,7 @@ struct Room::RoomImpl
 		return true;
 	}
 
-	std::vector< std::vector<Edge> > calculateEdges() const
-	{
-		// this array below distinguishes between big room (first) and holes
-		std::vector<Polygon2D> const &borderPolygons = image->getBorderPolygons(distance);
-
-		// this array doesn't distinguish between big room and holes
-		//std::vector<Edge> constraints = roomTriangulation.getConstrainedEdges();
-
-		std::vector< std::vector<Edge> > edges;
-
-		for (std::vector<Polygon2D>::const_iterator it = borderPolygons.begin();
-		     it != borderPolygons.end();
-		     it++) {
-			std::vector<Edge> polygonEdges;
-			std::vector<Coord2D>::const_iterator coordIterator = it->begin();
-			std::vector<Coord2D>::const_iterator lastCoordIterator = coordIterator;
-
-			++coordIterator;
-
-			while (coordIterator != it->end()) {
-				Edge edge(*lastCoordIterator, *coordIterator);
-				polygonEdges.push_back(edge);
-				lastCoordIterator = coordIterator;
-				++coordIterator;
-			}
-
-			if (it->begin() != it->end()) {
-				Edge lastEdge(*lastCoordIterator, *(it->begin()));
-				polygonEdges.push_back(lastEdge);
-			}
-
-			edges.push_back(polygonEdges);
-		}
-
-		return edges;
-	}
-
-	bool intersectsEdges(Edge const &checkEdge_)
+	bool intersectsEdges(Edge const &checkEdge_) const
 	{
 		Edge checkEdge(checkEdge_);
 
