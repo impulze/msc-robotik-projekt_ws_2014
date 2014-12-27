@@ -164,14 +164,12 @@ public:
 	{
 		DT::Point p(coord.x, coord.y);
 
-		for (DT::Finite_faces_iterator fit = dt.finite_faces_begin();
-		     fit != dt.finite_faces_end();
-		     ++fit) {
-			for (int i = 0; i < 3; i++) {
-				if (fit->vertex(i)->point() == p) {
-					dt.remove(fit->vertex(i));
-					return;
-				}
+		for (DT::Finite_vertices_iterator vit = dt.finite_vertices_begin();
+		     vit != dt.finite_vertices_end();
+		     ++vit) {
+			if (vit->point() == p) {
+				dt.remove(vit);
+				return;
 			}
 		}
 
@@ -182,13 +180,11 @@ public:
 	{
 		DT::Point p(coord.x, coord.y);
 
-		for (DT::Finite_faces_iterator fit = dt.finite_faces_begin();
-		     fit != dt.finite_faces_end();
-		     ++fit) {
-			for (int i = 0; i < 3; i++) {
-				if (fit->vertex(i)->point() == p) {
-					return true;
-				}
+		for (DT::Finite_vertices_iterator vit = dt.finite_vertices_begin();
+		     vit != dt.finite_vertices_end();
+		     ++vit) {
+			if (coord.x == vit->point().x() && coord.y == vit->point().y()) {
+				return true;
 			}
 		}
 
