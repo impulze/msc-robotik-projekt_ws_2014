@@ -99,6 +99,9 @@ public:
 	bool showPath;
 	std::vector<Triangle> triangulation;
 	std::vector<Coord2D> path;
+	Coord2D neighbourToShow;
+	// mapping of a coord and intersection value
+	std::map<Coord2D, bool> neighbourToShowNeighbours;
 };
 
 Drawing::DrawingImpl::DrawingImpl()
@@ -246,6 +249,17 @@ void Drawing::DrawingImpl::mouseClick(int x, int y, Drawing::MouseButton button)
 			Coord2D thisCoord(it->first.x, it->first.y);
 
 			if (coord == thisCoord) {
+				neighbourToShow = coord;
+				if (neighbourToShowNeighbours.empty()) {
+					for (std::set<Coord2D>::const_iterator sit = it->second.begin(); sit != it->second.end(); sit++) {
+						Edge edge(neighbourToShow, *sit);
+						// store if this edge intersects any polygon boundary edge
+						neighbourToShowNeighbours[*sit] = room->intersectsEdges(edge);
+					}
+				} else {
+					neighbourToShowNeighbours.clear();
+				}
+
 				for (std::set<Coord2D>::const_iterator cit = it->second.begin(); cit != it->second.end(); cit++) {
 					Coord2D thatCoord(cit->x, cit->y);
 
@@ -390,6 +404,28 @@ void Drawing::DrawingImpl::paint()
 		for (std::set<Coord2D>::const_iterator it = waypoints.begin(); it != waypoints.end(); it++) {
 			drawPoint(it->x, it->y);
 		}
+	}
+
+	for (std::map<Coord2D, bool>::const_iterator it = neighbourToShowNeighbours.begin();
+	     it != neighbourToShowNeighbours.end();
+	     it++) {
+		if (!it->second) {
+			unsigned char c1, c2, c3;
+
+			c1 = rand() % 128;
+			c2 = rand() % 128;
+			c3 = rand() % 128;
+
+			glColor3b(c1, c2, c3);
+		} else {
+			glColor3b(127, 0 ,0);
+			glLineWidth(2.0f);
+		}
+
+		glBegin(GL_LINES);
+		glVertex2f(neighbourToShow.x, texture->height() - 1 - neighbourToShow.y);
+		glVertex2f(it->first.x, texture->height() - 1 - it->first.y);
+		glEnd();
 	}
 
 	if (showPath && path.size() > 0) {
