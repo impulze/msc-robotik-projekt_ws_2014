@@ -49,7 +49,7 @@ struct Room::RoomImpl
 	unsigned int height;
 	unsigned char stride;
 	unsigned char distance;
-	ConstrainedDelaunayTriangulation triangulation;
+	DelaunayTriangulation triangulation;
 	ConstrainedDelaunayTriangulation roomTriangulation;
 	Coord2D startpoint;
 	Coord2D endpoint;
@@ -135,7 +135,6 @@ struct Room::RoomImpl
 			std::fprintf(stderr, "Endpoint (%d/%d) is startpoint, can't insert.\n", coord.x, coord.y);
 			return false;
 		}
-
 
 		if (!roomTriangulation.inDomain(coord)) {
 			std::fprintf(stderr, "Endpoint (%d/%d) outside domain, can't insert.\n", coord.x, coord.y);
@@ -328,24 +327,6 @@ struct Room::RoomImpl
 	void reinitializeTriangulation()
 	{
 		triangulation.clear();
-
-		std::vector<Polygon2D> const &borderPolygons = image->getBorderPolygons(distance);
-
-		for (std::vector<Polygon2D>::const_iterator it = borderPolygons.begin();
-		     it != borderPolygons.end();
-		     it++) {
-			std::vector<Coord2D> points;
-
-			for (std::size_t i = 0; i < it->size(); i++) {
-				Coord2D coord = (*it)[i];
-				points.push_back(coord);
-			}
-
-			Coord2D coord = (*it)[0];
-			points.push_back(coord);
-
-			triangulation.insertConstraints(points);
-		}
 
 		Coord2D newStartpoint = startpoint;
 		startpoint = Coord2D(0, 0);
