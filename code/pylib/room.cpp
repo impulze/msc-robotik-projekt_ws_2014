@@ -240,6 +240,14 @@ struct Room::RoomImpl
 					continue;
 				}
 
+				if (x == checkEdge.start.x && y == checkEdge.start.y) {
+					continue;
+				}
+
+				if (x == checkEdge.end.x && y == checkEdge.end.y) {
+					continue;
+				}
+
 				return true;
 			}
 		}
