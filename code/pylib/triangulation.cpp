@@ -336,7 +336,7 @@ public:
 				if (fit->getInDomain()) {
 					CDT::Ctr::Triangulation::Triangle triangle = cdt.triangle(fit);
 
-					if (triangle.has_on_positive_side(p)) {
+					if (triangle.has_on_positive_side(p) || triangle.has_on_boundary(p)) {
 						return true;
 					}
 				}
