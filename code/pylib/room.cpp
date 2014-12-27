@@ -189,26 +189,12 @@ struct Room::RoomImpl
 
 	bool intersectsEdges(Edge const &checkEdge_) const
 	{
-		bool doPrint_ = false;
-
-		//room->insertWaypoint(Coord2D(352, 277));
-		//room->insertWaypoint(Coord2D(401, 271));
-
-		if (checkEdge_.start.x == 352 && checkEdge_.start.y == 277 &&
-		    checkEdge_.end.x == 401 && checkEdge_.end.y == 271) {
-			doPrint_ = true;
-		}
-
-		doPrint_ = true;
-
 		Edge checkEdge(checkEdge_);
 
 		int r[2] = {
 			static_cast<int>(checkEdge.end.x) - static_cast<int>(checkEdge.start.x),
 			static_cast<int>(checkEdge.end.y) - static_cast<int>(checkEdge.start.y)
 		};
-
-		if (doPrint_) printf("checking: %d/%d->%d/%d\n", checkEdge.start.x, checkEdge.start.y, checkEdge.end.x, checkEdge.end.y);
 
 		for (std::vector< std::vector<Edge> >::const_iterator it = edges.begin();
 		     it != edges.end();
@@ -223,16 +209,6 @@ struct Room::RoomImpl
 					static_cast<int>(edge.end.y) - static_cast<int>(edge.start.y)
 				};
 
-				//bool doPrint = doPrint_;
-				bool doPrint = true;
-
-				//if (doPrint && !(edge.start.x == 517 && edge.start.y == 310 && edge.end.x == 413 && edge.end.y == 310)) {
-				if (doPrint && !(edge.start.x == 413 && edge.start.y == 277 && edge.end.x == 298 && edge.end.y == 277)) {
-					doPrint = false;
-				}
-
-				if (doPrint) printf("with: %d/%d->%d/%d\n", edge.start.x, edge.start.y, edge.end.x, edge.end.y);
-
 				float x, y;
 
 				Coord2D diffPoint(edge.start.x - checkEdge.start.x, edge.start.y - checkEdge.start.y);
@@ -241,25 +217,19 @@ struct Room::RoomImpl
 
 				if (rCrossS == 0) {
 					if (diffPointCrossR == 0) {
-						if (doPrint) printf("lines are collinear\n");
-
 						int diffPointMultR = diffPoint.x * r[0] + diffPoint.y * r[1];
 						int diffPointMultS = diffPoint.x * s[0] + diffPoint.y * s[1];
 						int rMultR = r[0] * r[0] + r[1] * r[1];
 						int sMultS = s[0] * s[0] + s[1] * s[1];
 
 						if ((0 <= diffPointMultR) && (diffPointMultR <= rMultR)) {
-							if (doPrint) printf("and overlapping\n");
 							return true;
 						} else if ((0 <= diffPointMultS) && (diffPointMultS <= sMultS)) {
-							if (doPrint) printf("and overlapping\n");
 							return true;
 						} else {
-							if (doPrint) printf("and disjoint\n");
 							continue;
 						}
 					} else {
-						if (doPrint) printf("and parallel and non-intersecting\n");
 						continue;
 					}
 				} else {
@@ -268,11 +238,9 @@ struct Room::RoomImpl
 					float t = diffPointCrossS / static_cast<float>(rCrossS);
 
 					if ((0 <= u) && (u <= 1) && (0 <= t) && (t <= 1)) {
-						if (doPrint) printf("and intersecting\n");
 						x = checkEdge.start.x + t * r[0];
 						y = checkEdge.start.y + t * r[1];
 					} else {
-						if (doPrint) printf("and non-intersecting\n");
 						continue;
 					}
 				}
@@ -303,8 +271,6 @@ struct Room::RoomImpl
 					continue;
 				}
 
-				if (doPrint) printf("intersect at %f/%f\n", x, y);
-
 				IntersectionPoint intersectionPoint;
 
 				intersectionPoint.x = x;
@@ -313,7 +279,6 @@ struct Room::RoomImpl
 				intersectionPoints.push_back(intersectionPoint);
 			}
 
-			if (doPrint_) printf("intersections: %d\n", intersectionPoints.size());
 			if (intersectionPoints.size() >= 2) {
 				for (size_t i = 0; i < intersectionPoints.size(); i++) {
 					size_t next = i + 1;
@@ -329,7 +294,6 @@ struct Room::RoomImpl
 					float checkY = (start.y + end.y) / 2.0;
 
 					if (!roomTriangulation.inDomain(checkX, checkY)) {
-						printf("not in domain: %f/%f\n", checkX, checkY);
 						return true;
 					}
 				}
