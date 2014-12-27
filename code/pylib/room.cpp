@@ -264,6 +264,7 @@ struct Room::RoomImpl
 
 		int i = 0;
 
+		// every coordinate gets an id
 		for (NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
 			Coord2D coord = it->first;
 
@@ -272,6 +273,7 @@ struct Room::RoomImpl
 			}
 		}
 
+		// check that every neighbour of a coordinate (which is also a coordinate) has an id
 		for (NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
 			for (std::set<Coord2D>::const_iterator cit = it->second.begin(); cit != it->second.end(); cit++) {
 				Coord2D checkCoord = *cit;
@@ -286,6 +288,13 @@ struct Room::RoomImpl
 
 			for (std::set<Coord2D>::const_iterator cit = it->second.begin(); cit != it->second.end(); cit++) {
 				Coord2D thatCoord = *cit;
+
+				// now check that the neighbour coordinate can be reached
+				Edge checkEdge(thisCoord, thatCoord);
+
+				if (intersectsEdges(checkEdge)) {
+					continue;
+				}
 
 				double xDistance = static_cast<double>(thatCoord.x) - thisCoord.x;
 				double yDistance = static_cast<double>(thatCoord.y) - thisCoord.y;
