@@ -466,7 +466,7 @@ void Drawing::DrawingImpl::paint()
 			Coord2D c2;
 			Coord2D c3;
 			Coord2D c4;
-			Coord2D result;
+			Coord2DTemplate<float> result;
 
 			for (float t = 0.0f; t < 1.0f; t += 0.02f) {
 				if (i == 0) {
