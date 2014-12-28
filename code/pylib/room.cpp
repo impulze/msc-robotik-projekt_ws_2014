@@ -9,12 +9,6 @@
 #include <cmath>
 #include <cstdio>
 
-struct IntersectionPoint
-{
-	float x;
-	float y;
-};
-
 struct Room::RoomImpl
 {
 	RoomImpl(std::string const &filename, unsigned char distance)
@@ -199,7 +193,7 @@ struct Room::RoomImpl
 		for (std::vector< std::vector<Edge> >::const_iterator it = edges.begin();
 		     it != edges.end();
 		     it++) {
-			std::vector<IntersectionPoint> intersectionPoints;
+			std::vector< Coord2DTemplate<float> > intersectionPoints;
 
 			for (std::vector<Edge>::const_iterator eit = it->begin(); eit != it->end(); eit++) {
 				Edge edge = *eit;
@@ -271,10 +265,7 @@ struct Room::RoomImpl
 					continue;
 				}
 
-				IntersectionPoint intersectionPoint;
-
-				intersectionPoint.x = x;
-				intersectionPoint.y = y;
+				Coord2DTemplate<float> intersectionPoint(x, y);
 
 				intersectionPoints.push_back(intersectionPoint);
 			}
@@ -287,8 +278,8 @@ struct Room::RoomImpl
 						next = 0;
 					}
 
-					IntersectionPoint start(intersectionPoints[i]);
-					IntersectionPoint end(intersectionPoints[next]);
+					Coord2DTemplate<float> start(intersectionPoints[i]);
+					Coord2DTemplate<float> end(intersectionPoints[next]);
 
 					float checkX = (start.x + end.x) / 2.0;
 					float checkY = (start.y + end.y) / 2.0;
