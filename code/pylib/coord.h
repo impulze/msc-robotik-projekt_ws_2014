@@ -1,17 +1,22 @@
 #ifndef ROB_COORD_H_INCLUDED
 #define ROB_COORD_H_INCLUDED
 
-struct Coord2D
+template <class T = unsigned int>
+struct Coord2DTemplate
 {
-	Coord2D();
-	Coord2D(unsigned int x, unsigned int y);
+	Coord2DTemplate();
+	Coord2DTemplate(T x, T y);
 
-	bool operator<(Coord2D const &other) const;
-	bool operator==(Coord2D const &other) const;
-	bool operator!=(Coord2D const &other) const;
+	bool operator<(Coord2DTemplate const &other) const;
+	bool operator==(Coord2DTemplate const &other) const;
+	bool operator!=(Coord2DTemplate const &other) const;
 
-	unsigned int x;
-	unsigned int y;
+	T x;
+	T y;
 };
+
+typedef Coord2DTemplate<> Coord2D;
+
+#include "coord.tcc"
 
 #endif // ROB_COORD_H_INCLUDED
