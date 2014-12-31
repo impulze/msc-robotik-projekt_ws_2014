@@ -21,6 +21,7 @@ public:
 	enum Option
 	{
 		ShowTriangulation,
+		ShowRoomTriangulation,
 		ShowWaypoints,
 		ShowPath
 	};

@@ -484,9 +484,14 @@ bool Room::intersectsEdges(Edge const &checkEdge) const
 	return p->intersectsEdges(checkEdge);
 }
 
-std::vector<Triangle> Room::triangulate() const
+std::vector<Triangle> Room::getTriangulation() const
 {
 	return p->triangulation.getTriangulation();
+}
+
+std::vector<Triangle> Room::getRoomTriangulation() const
+{
+	return p->roomTriangulation.getTriangulation();
 }
 
 std::vector<Coord2D> Room::generatePath() const

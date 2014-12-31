@@ -90,9 +90,11 @@ class CentralWidget(QtWidgets.QWidget):
 		self.pointButtonStart.stateChanged.connect(self.setStartpointChanged)
 		self.pointButtonEnd.stateChanged.connect(self.setEndpointChanged)
 		self.buttonShowTriangulation = QtWidgets.QCheckBox(self.tr('Show triangulation'))
+		self.buttonShowRoomTriangulation = QtWidgets.QCheckBox(self.tr('Show room triangulation'))
 		self.buttonShowWaypoints = QtWidgets.QCheckBox(self.tr('Show waypoints'))
 		self.buttonShowPath = QtWidgets.QCheckBox(self.tr('Show path'))
 		self.buttonShowTriangulation.stateChanged.connect(self.showTriangulationChanged)
+		self.buttonShowRoomTriangulation.stateChanged.connect(self.showRoomTriangulationChanged)
 		self.buttonShowWaypoints.stateChanged.connect(self.showWaypointsChanged)
 		self.buttonShowPath.stateChanged.connect(self.showPathChanged)
 
@@ -114,6 +116,7 @@ class CentralWidget(QtWidgets.QWidget):
 		line.setFrameShadow(QtWidgets.QFrame.Sunken)
 		sideLayout.addWidget(line)
 		sideLayout.addWidget(self.buttonShowTriangulation)
+		sideLayout.addWidget(self.buttonShowRoomTriangulation)
 		sideLayout.addWidget(self.buttonShowWaypoints)
 		sideLayout.addWidget(self.buttonShowPath)
 		sideLayout.addItem(QtWidgets.QSpacerItem(1, 1, QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding))
@@ -152,6 +155,9 @@ class CentralWidget(QtWidgets.QWidget):
 
 	def showTriangulationChanged(self, state):
 		self.drawing.setOption(native.Drawing.ShowTriangulation, state == QtCore.Qt.Checked)
+
+	def showRoomTriangulationChanged(self, state):
+		self.drawing.setOption(native.Drawing.ShowRoomTriangulation, state == QtCore.Qt.Checked)
 
 	def showWaypointsChanged(self, state):
 		self.drawing.setOption(native.Drawing.ShowWaypoints, state == QtCore.Qt.Checked)

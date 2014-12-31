@@ -94,10 +94,9 @@ public:
 	GLuint circleVBO;
 	Room *room;
 	Texture *texture;
-	bool showTriangulation;
-	bool showWaypoints;
-	bool showPath;
+	bool show_[4];
 	std::vector<Triangle> triangulation;
+	std::vector<Triangle> roomTriangulation;
 	std::vector<Coord2D> path;
 	Coord2D neighbourToShow;
 	// mapping of a coord and intersection value
@@ -107,12 +106,13 @@ public:
 Drawing::DrawingImpl::DrawingImpl()
 	: waypointModification(Drawing::WaypointNoMod),
 	  room(0),
-	  texture(0),
-	  showTriangulation(false),
-	  showWaypoints(false),
-	  showPath(false)
+	  texture(0)
 {
 	std::srand(std::time(0));
+
+	for (size_t i = 0; i < sizeof show_ / sizeof *show_; i++) {
+		show_[i] = false;
+	}
 }
 
 Drawing::DrawingImpl::~DrawingImpl()
@@ -139,6 +139,8 @@ void Drawing::DrawingImpl::fromImage(const char *name)
 		delete texture;
 		throw;
 	}
+
+	roomTriangulation = room->getRoomTriangulation();
 }
 
 void Drawing::DrawingImpl::setNodes(int amount)
@@ -155,7 +157,7 @@ void Drawing::DrawingImpl::setNodes(int amount)
 		}
 	}
 
-	triangulation = room->triangulate();
+	triangulation = room->getTriangulation();
 	path = room->generatePath();
 }
 
@@ -168,15 +170,10 @@ void Drawing::DrawingImpl::setOption(Drawing::Option option, bool enabled)
 {
 	switch (option) {
 		case Drawing::ShowTriangulation:
-			showTriangulation = enabled;
-			break;
-
+		case Drawing::ShowRoomTriangulation:
 		case Drawing::ShowWaypoints:
-			showWaypoints = enabled;
-			break;
-
 		case Drawing::ShowPath:
-			showPath = enabled;
+			show_[option] = enabled;
 			break;
 	}
 }
@@ -233,7 +230,7 @@ void Drawing::DrawingImpl::mouseClick(int x, int y, Drawing::MouseButton button)
 		}
 
 		if (changed) {
-			triangulation = room->triangulate();
+			triangulation = room->getTriangulation();
 			path = room->generatePath();
 		}
 	} else if (button == Drawing::RightMouseButton) {
@@ -332,7 +329,7 @@ void Drawing::DrawingImpl::initialize()
 	//room->setStartpoint(Coord2D(557, 317));
 	room->setEndpoint(Coord2D(330, 287));
 
-	triangulation = room->triangulate();
+	triangulation = room->getTriangulation();
 	path = room->generatePath();
 }
 
@@ -383,7 +380,7 @@ void Drawing::DrawingImpl::paint()
 	glVertexPointer(2, GL_DOUBLE, 0, 0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	if (showTriangulation) {
+	if (show_[ShowTriangulation]) {
 		glTranslatef(0.0f, 0.0f, 0.2f);
 		// light blue
 		glColor3f(0.5f, 0.8f, 1.0f);
@@ -403,7 +400,28 @@ void Drawing::DrawingImpl::paint()
 		}
 	}
 
-	if (showWaypoints) {
+	if (show_[ShowRoomTriangulation]) {
+		glTranslatef(0.0f, 0.0f, 0.2f);
+		// lighter blue
+		glColor3f(0.6f, 0.9f, 1.0f);
+		glLineWidth(2.0f);
+		for (std::vector<Triangle>::const_iterator it = roomTriangulation.begin();
+		     it != roomTriangulation.end();
+		     it++) {
+			glBegin(GL_LINE_LOOP);
+
+			for (int i = 0; i < 3; i++) {
+				unsigned int x = (*it)[i].x;
+				unsigned int y = texture->height() - 1 - (*it)[i].y;
+				glVertex2i(x, y);
+			}
+
+			glEnd();
+		}
+	}
+
+	
+	if (show_[ShowWaypoints]) {
 		glTranslatef(0.0f, 0.0f, 0.2f);
 		// yellow
 		glColor3f(1.0f, 1.0f, 0.0f);
@@ -454,7 +472,7 @@ void Drawing::DrawingImpl::paint()
 		glEnd();
 	}
 
-	if (showPath && path.size() > 0) {
+	if (show_[ShowPath] && path.size() > 0) {
 		glTranslatef(0.0f, 0.0f, 0.2f);
 		// dark-yellow
 		//glColor3f(0.7f, 0.7f, 0.0f);
