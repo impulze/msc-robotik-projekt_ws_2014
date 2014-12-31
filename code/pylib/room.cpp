@@ -308,35 +308,23 @@ struct Room::RoomImpl
 		return false;
 	}
 
-	struct EdgeAdder
-	{
-		EdgeAdder(RoomImpl &roomImpl)
-			: roomImpl(roomImpl)
-		{
-		}
-
-		bool operator()(Edge const &checkEdge, double &distance)
-		{
-			if (roomImpl.intersectsEdges(checkEdge)) {
-				return false;
-			}
-
-			double xDistance = static_cast<double>(checkEdge.end.x) - checkEdge.start.x;
-			double yDistance = static_cast<double>(checkEdge.end.y) - checkEdge.start.y;
-			distance = std::sqrt(xDistance * xDistance + yDistance * yDistance);
-
-			return true;
-		}
-
-		RoomImpl &roomImpl;
-	};
-
 	std::vector<Coord2D> generatePath()
 	{
 		NeighboursMap neighbours = triangulation.getNeighbours();
-		EdgeAdder edgeAdder(*this);
 
-		std::vector<Coord2D> generatedPath = dijkstra(neighbours, startpoint, endpoint, edgeAdder);
+		for (NeighboursMap::iterator it = neighbours.begin(); it != neighbours.end(); it++) {
+			for (std::set<Coord2D>::iterator nit = it->second.begin(); nit != it->second.end();) {
+				Edge checkEdge(it->first, *nit);
+
+				if (intersectsEdges(checkEdge)) {
+					it->second.erase(nit++);
+				} else {
+					++nit;
+				}
+			}
+		}
+
+		std::vector<Coord2D> generatedPath = dijkstra(neighbours, startpoint, endpoint);
 
 		return generatedPath;
 	}

@@ -31,7 +31,6 @@ namespace
 	// dijkstra
 	void DijkstraComputePaths(int source,
 	                          const adjacency_list_t &adjacency_list,
-	                          std::vector<double> &min_distance,
 	                          std::vector<int> &previous);
 	std::list<int> DijkstraGetShortestPathTo(int vertex, const std::vector<int> &previous);
 
@@ -148,11 +147,10 @@ neighbour::neighbour(int target, double weight)
 
 void DijkstraComputePaths(int source,
                           const adjacency_list_t &adjacency_list,
-                          std::vector<double> &min_distance,
                           std::vector<int> &previous)
 {
+	std::vector<double> min_distance;
 	adjacency_list_t::size_type n = adjacency_list.size();
-	min_distance.clear();
 	min_distance.resize(n, max_weight);
 	min_distance[source] = 0;
 	previous.clear();
@@ -201,8 +199,7 @@ std::list<int> DijkstraGetShortestPathTo(int vertex, const std::vector<int> &pre
 }
 
 std::vector<Coord2D> dijkstra(NeighboursMap const &neighbours,
-                              Coord2D const &startpoint, Coord2D const &endpoint,
-                              boost::function<bool(Edge const &, double &)> edgeAdder)
+                              Coord2D const &startpoint, Coord2D const &endpoint)
 {
 	std::vector<Coord2D> generatedPath;
 	std::map<Coord2D, int> neighbourToIndexMap;
@@ -234,22 +231,19 @@ std::vector<Coord2D> dijkstra(NeighboursMap const &neighbours,
 		for (std::set<Coord2D>::const_iterator cit = it->second.begin(); cit != it->second.end(); cit++) {
 			Coord2D thatCoord = *cit;
 
-			// now check that the neighbour coordinate can be reached
-			Edge checkEdge(thisCoord, thatCoord);
-			double distance;
+			double xDistance = static_cast<double>(thatCoord.x) - thisCoord.x;
+			double yDistance = static_cast<double>(thatCoord.y) - thisCoord.y;
+			double distance = std::sqrt(xDistance * xDistance + yDistance * yDistance);
 
-			if (edgeAdder(checkEdge, distance)) {
-				adjacency_list[neighbourToIndexMap[thisCoord]].push_back(neighbour(neighbourToIndexMap[thatCoord], distance));
-			}
+			adjacency_list[neighbourToIndexMap[thisCoord]].push_back(neighbour(neighbourToIndexMap[thatCoord], distance));
 		}
 	}
 
 	assert(neighbourToIndexMap.find(startpoint) != neighbourToIndexMap.end());
 	assert(neighbourToIndexMap.find(endpoint) != neighbourToIndexMap.end());
 
-	std::vector<double> min_distance;
 	std::vector<int> previous;
-	DijkstraComputePaths(neighbourToIndexMap[startpoint], adjacency_list, min_distance, previous);
+	DijkstraComputePaths(neighbourToIndexMap[startpoint], adjacency_list, previous);
 	std::list<int> path = DijkstraGetShortestPathTo(neighbourToIndexMap[endpoint], previous);
 
 	for (std::list<int>::const_iterator it = path.begin(); it != path.end(); it++) {
@@ -267,6 +261,106 @@ std::vector<Coord2D> dijkstra(NeighboursMap const &neighbours,
 
 		generatedPath.push_back(found->first);
 	}
+
+	return generatedPath;
+}
+
+Coord2D const &aStarLowestFScore(std::set<Coord2D> const &searchSet, std::map<Coord2D, unsigned int> const &fScore)
+{
+	unsigned int lowest = 0;
+	std::set<Coord2D>::const_iterator lowestMemberIt;
+
+	assert(searchSet.begin() != searchSet.end());
+
+	for (std::set<Coord2D>::const_iterator searchIt = searchSet.begin(); searchIt != searchSet.end(); searchIt++) {
+		std::map<Coord2D, unsigned int>::const_iterator candidate = fScore.find(*searchIt);
+
+		assert(candidate != fScore.end());
+
+		if (lowest) {
+			if (candidate->second < lowest) {
+				lowest = candidate->second;
+				lowestMemberIt = searchIt;
+			}
+		} else {
+			lowest = candidate->second;
+			lowestMemberIt = searchIt;
+		}
+	}
+
+	return *lowestMemberIt;
+}
+
+unsigned int aStarHeuristicCostEstimate(Coord2D const &start, Coord2D const &end)
+{
+	return 0;
+}
+
+std::vector<Coord2D> aStarReconstructPath(std::map<Coord2D, Coord2D> const &cameFrom, Coord2D const &end)
+{
+	std::vector<Coord2D> path;
+
+	return path;
+}
+
+unsigned int aStarDistanceBetween(Coord2D const &start, Coord2D const &end)
+{
+	return 0;
+}
+
+std::vector<Coord2D> astar(NeighboursMap const &neighbours,
+                           Coord2D const &startpoint, Coord2D const &endpoint)
+{
+	std::vector<Coord2D> generatedPath;
+
+	std::set<Coord2D> closedSet;
+	std::set<Coord2D> openSet;
+	std::map<Coord2D, Coord2D> cameFrom;
+
+	std::map<Coord2D, unsigned int> gScore;
+	std::map<Coord2D, unsigned int> fScore;
+
+	openSet.insert(startpoint);
+
+	gScore[startpoint] = 0;
+	fScore[startpoint] = 0 + aStarHeuristicCostEstimate(startpoint, endpoint);
+
+	while (!openSet.empty()) {
+		Coord2D current = aStarLowestFScore(openSet, fScore);
+
+		if (current == endpoint) {
+			return aStarReconstructPath(cameFrom, endpoint);
+		}
+
+		openSet.erase(current);
+		closedSet.insert(current);
+
+		NeighboursMap::const_iterator neighboursIt = neighbours.find(current);
+
+		assert(neighboursIt != neighbours.end());
+
+		std::set<Coord2D> const &currentNeighbours = neighboursIt->second;
+
+		for (std::set<Coord2D>::const_iterator neighbourIt = currentNeighbours.begin(); neighbourIt != currentNeighbours.end(); neighbourIt++) {
+			Coord2D neighbour = *neighbourIt;
+
+			if (closedSet.find(neighbour) != closedSet.end()) {
+				continue;
+			}
+
+			unsigned int tentativeGScore = gScore[current] + aStarDistanceBetween(current, neighbour);
+
+			if (openSet.find(neighbour) == openSet.end() || tentativeGScore < gScore[neighbour]) {
+				cameFrom[neighbour] = current;
+				gScore[neighbour] = tentativeGScore;
+				fScore[neighbour] = gScore[neighbour] + aStarHeuristicCostEstimate(neighbour, endpoint);
+
+				openSet.insert(neighbour);
+			}
+		}
+	}
+
+	assert(false);
 
 	return generatedPath;
 }
