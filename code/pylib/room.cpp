@@ -1,4 +1,4 @@
-#include "dijkstra.h"
+#include "algo.h"
 #include "room.h"
 #include "roomimage.h"
 #include "triangulation.h"
@@ -353,19 +353,19 @@ struct Room::RoomImpl
 				double yDistance = static_cast<double>(thatCoord.y) - thisCoord.y;
 				double distance = std::sqrt(xDistance * xDistance + yDistance * yDistance);
 
-				adjacency_list[neighbourToIndexMap[thisCoord]].push_back(neighbor(neighbourToIndexMap[thatCoord], distance));
+				adjacency_list[neighbourToIndexMap[thisCoord]].push_back(neighbour(neighbourToIndexMap[thatCoord], distance));
 			}
 		}
 
 		assert(neighbourToIndexMap.find(startpoint) != neighbourToIndexMap.end());
 		assert(neighbourToIndexMap.find(endpoint) != neighbourToIndexMap.end());
 
-		std::vector<weight_t> min_distance;
-		std::vector<vertex_t> previous;
+		std::vector<double> min_distance;
+		std::vector<int> previous;
 		DijkstraComputePaths(neighbourToIndexMap[startpoint], adjacency_list, min_distance, previous);
-		std::list<vertex_t> path = DijkstraGetShortestPathTo(neighbourToIndexMap[endpoint], previous);
+		std::list<int> path = DijkstraGetShortestPathTo(neighbourToIndexMap[endpoint], previous);
 
-		for (std::list<vertex_t>::const_iterator it = path.begin(); it != path.end(); it++) {
+		for (std::list<int>::const_iterator it = path.begin(); it != path.end(); it++) {
 			int thisIndex = *it;
 			std::map<Coord2D, int>::const_iterator found = neighbourToIndexMap.end();
 

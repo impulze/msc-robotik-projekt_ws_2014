@@ -1,5 +1,21 @@
 #include "algo.h"
 
+#include <algorithm>
+#include <limits>
+#include <set>
+#include <utility>
+
+namespace
+{
+	Coord2DTemplate<float> catmullRomImpl(double matrix[4][4], float t, Coord2D const &c1, Coord2D const &c2, Coord2D const &c3, Coord2D const &c4);
+	Coord2DTemplate<float> catmullRomFirst(float t, Coord2D const &c1, Coord2D const &c2, Coord2D const &c3);
+	Coord2DTemplate<float> catmullRomMiddle(float t, Coord2D const &c1, Coord2D const &c2, Coord2D const &c3, Coord2D const &c4);
+	Coord2DTemplate<float> catmullRomLast(float t, Coord2D const &c1, Coord2D const &c2, Coord2D const &c3);
+}
+
+namespace
+{
+
 Coord2DTemplate<float> catmullRomImpl(double matrix[4][4], float t, Coord2D const &c1, Coord2D const &c2, Coord2D const &c3, Coord2D const &c4)
 {
 	double first = (1 * matrix[0][0] + t * matrix[1][0] + t * t * matrix[2][0] + t * t * t * matrix[3][0]) / 2;
@@ -29,7 +45,7 @@ Coord2DTemplate<float> catmullRomFirst(float t, Coord2D const &c1, Coord2D const
 	return catmullRomImpl(matrix, t, orientation, c1, c2, c3);
 }
 
-Coord2DTemplate<float> catmullRom(float t, Coord2D const &c1, Coord2D const &c2, Coord2D const &c3, Coord2D const &c4)
+Coord2DTemplate<float> catmullRomMiddle(float t, Coord2D const &c1, Coord2D const &c2, Coord2D const &c3, Coord2D const &c4)
 {
 	double a = 1;
 
@@ -55,4 +71,103 @@ Coord2DTemplate<float> catmullRomLast(float t, Coord2D const &c1, Coord2D const 
 	Coord2D orientation(1, 1);
 
 	return catmullRomImpl(matrix, t, c1, c2, c3, orientation);
+}
+
+}
+
+std::vector< Coord2DTemplate<float> > catmullRom(std::vector<Coord2D> const &waypoints, unsigned int steps)
+{
+	std::vector< Coord2DTemplate<float> > pathPoints;
+
+	for (std::vector<Coord2D>::size_type i = 0; i < waypoints.size() - 1; i++) {
+		Coord2D c1;
+		Coord2D c2;
+		Coord2D c3;
+		Coord2D c4;
+		Coord2DTemplate<float> result;
+
+		for (float t = 0.0f; t < 1.0f; t += 1.0f / steps) {
+			if (i == 0) {
+				c1 = waypoints[i];
+				c2 = waypoints[i + 1];
+				c3 = waypoints[i + 2];
+				result = catmullRomFirst(t, c1, c2, c3);
+			} else if (i == waypoints.size() - 2) {
+				c1 = waypoints[i - 1];
+				c2 = waypoints[i];
+				c3 = waypoints[i + 1];
+				result = catmullRomLast(t, c1, c2, c3);
+			} else {
+				c1 = waypoints[i - 1];
+				c2 = waypoints[i];
+				c3 = waypoints[i + 1];
+				c4 = waypoints[i + 2];
+				result = catmullRomMiddle(t, c1, c2, c3, c4);
+			}
+
+			pathPoints.push_back(result);
+		}
+	}
+
+	return pathPoints;
+}
+
+const double max_weight = std::numeric_limits<double>::infinity();
+
+neighbour::neighbour(int target, double weight)
+	: target(target),
+	  weight(weight)
+{
+}
+
+void DijkstraComputePaths(int source,
+                          const adjacency_list_t &adjacency_list,
+                          std::vector<double> &min_distance,
+                          std::vector<int> &previous)
+{
+	adjacency_list_t::size_type n = adjacency_list.size();
+	min_distance.clear();
+	min_distance.resize(n, max_weight);
+	min_distance[source] = 0;
+	previous.clear();
+	previous.resize(n, -1);
+	std::set< std::pair<double, int> > vertex_queue;
+	vertex_queue.insert(std::make_pair(min_distance[source], source));
+ 
+	while (!vertex_queue.empty()) {
+		double dist = vertex_queue.begin()->first;
+		int u = vertex_queue.begin()->second;
+		vertex_queue.erase(vertex_queue.begin());
+ 
+		// Visit each edge exiting u
+		const std::vector<neighbour> &neighbours = adjacency_list[u];
+
+		for (std::vector<neighbour>::const_iterator neighbour_iter = neighbours.begin();
+		     neighbour_iter != neighbours.end();
+		     neighbour_iter++) {
+			int v = neighbour_iter->target;
+			double weight = neighbour_iter->weight;
+			double distance_through_u = dist + weight;
+
+			if (distance_through_u < min_distance[v]) {
+				vertex_queue.erase(std::make_pair(min_distance[v], v));
+
+				min_distance[v] = distance_through_u;
+				previous[v] = u;
+
+				vertex_queue.insert(std::make_pair(min_distance[v], v));
+			}
+		}
+	}
+}
+
+std::list<int> DijkstraGetShortestPathTo(int vertex, const std::vector<int> &previous)
+{
+	std::list<int> path;
+
+	for (; vertex != -1; vertex = previous[vertex]) {
+		path.push_front(vertex);
+	}
+
+	return path;
 }

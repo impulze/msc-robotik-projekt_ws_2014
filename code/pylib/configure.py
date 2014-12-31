@@ -1261,7 +1261,7 @@ macx {
     pro.write('HEADERS = sipAPI%s.h\n' % mname)
     # TODO: why do i have to add this?
     pro.write('HEADERS += drawwidget.h opengldrawwidget.h\n')
-    pro.write('SOURCES += drawwidget.cpp opengldrawwidget.cpp dijkstra.cpp gl.cpp il.cpp image.cpp texture.cpp coord.cpp roomimage.cpp room.cpp polygon.cpp triangle.cpp triangulation.cpp edge.cpp\n')
+    pro.write('SOURCES += drawwidget.cpp opengldrawwidget.cpp gl.cpp il.cpp image.cpp texture.cpp coord.cpp roomimage.cpp room.cpp polygon.cpp triangle.cpp triangulation.cpp edge.cpp\n')
     pro.write('HEADERS += drawing.h\n')
     pro.write('SOURCES += drawing.cpp algo.cpp\n')
 

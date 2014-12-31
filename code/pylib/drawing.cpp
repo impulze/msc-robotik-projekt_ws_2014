@@ -461,34 +461,12 @@ void Drawing::DrawingImpl::paint()
 		glColor3f(0.2f, 0.2f, 0.2f);
 		glLineWidth(2.0f);
 		glBegin(GL_LINE_STRIP);
-		for (std::vector<Coord2D>::size_type i = 0; i < path.size() - 1; i++) {
-			Coord2D c1;
-			Coord2D c2;
-			Coord2D c3;
-			Coord2D c4;
-			Coord2DTemplate<float> result;
+		std::vector< Coord2DTemplate<float> > pathPoints = catmullRom(path, 50);
 
-			for (float t = 0.0f; t < 1.0f; t += 0.02f) {
-				if (i == 0) {
-					c1 = path[i];
-					c2 = path[i + 1];
-					c3 = path[i + 2];
-					result = catmullRomFirst(t, c1, c2, c3);
-				} else if (i == path.size() - 2) {
-					c1 = path[i - 1];
-					c2 = path[i];
-					c3 = path[i + 1];
-					result = catmullRomLast(t, c1, c2, c3);
-				} else {
-					c1 = path[i - 1];
-					c2 = path[i];
-					c3 = path[i + 1];
-					c4 = path[i + 2];
-					result = catmullRom(t, c1, c2, c3, c4);
-				}
-
-				glVertex2f(result.x, texture->height() - 1 - result.y);
-			}
+		for (std::vector< Coord2DTemplate<float> >::const_iterator it = pathPoints.begin();
+		     it != pathPoints.end();
+		     ++it) {
+			glVertex2f(it->x, texture->height() - 1 - it->y);
 		}
 		glEnd();
 	}
