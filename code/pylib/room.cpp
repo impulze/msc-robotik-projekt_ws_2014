@@ -308,78 +308,35 @@ struct Room::RoomImpl
 		return false;
 	}
 
+	struct EdgeAdder
+	{
+		EdgeAdder(RoomImpl &roomImpl)
+			: roomImpl(roomImpl)
+		{
+		}
+
+		bool operator()(Edge const &checkEdge, double &distance)
+		{
+			if (roomImpl.intersectsEdges(checkEdge)) {
+				return false;
+			}
+
+			double xDistance = static_cast<double>(checkEdge.end.x) - checkEdge.start.x;
+			double yDistance = static_cast<double>(checkEdge.end.y) - checkEdge.start.y;
+			distance = std::sqrt(xDistance * xDistance + yDistance * yDistance);
+
+			return true;
+		}
+
+		RoomImpl &roomImpl;
+	};
+
 	std::vector<Coord2D> generatePath()
 	{
-		std::vector<Coord2D> generatedPath;
-
 		NeighboursMap neighbours = triangulation.getNeighbours();
-		std::map<Coord2D, int> neighbourToIndexMap;
+		EdgeAdder edgeAdder(*this);
 
-		int i = 0;
-
-		// every coordinate gets an id
-		for (NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
-			Coord2D coord = it->first;
-
-			if (neighbourToIndexMap.find(coord) == neighbourToIndexMap.end()) {
-				neighbourToIndexMap[coord] = i++;
-			}
-		}
-
-		// check that every neighbour of a coordinate (which is also a coordinate) has an id
-		for (NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
-			for (std::set<Coord2D>::const_iterator cit = it->second.begin(); cit != it->second.end(); cit++) {
-				Coord2D checkCoord = *cit;
-				assert(neighbourToIndexMap.find(checkCoord) != neighbourToIndexMap.end());
-			}
-		}
-
-		adjacency_list_t adjacency_list(neighbours.size());
-
-		for (NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
-			Coord2D thisCoord = it->first;
-
-			for (std::set<Coord2D>::const_iterator cit = it->second.begin(); cit != it->second.end(); cit++) {
-				Coord2D thatCoord = *cit;
-
-				// now check that the neighbour coordinate can be reached
-				Edge checkEdge(thisCoord, thatCoord);
-
-				if (intersectsEdges(checkEdge)) {
-					continue;
-				}
-
-				double xDistance = static_cast<double>(thatCoord.x) - thisCoord.x;
-				double yDistance = static_cast<double>(thatCoord.y) - thisCoord.y;
-				double distance = std::sqrt(xDistance * xDistance + yDistance * yDistance);
-
-				adjacency_list[neighbourToIndexMap[thisCoord]].push_back(neighbour(neighbourToIndexMap[thatCoord], distance));
-			}
-		}
-
-		assert(neighbourToIndexMap.find(startpoint) != neighbourToIndexMap.end());
-		assert(neighbourToIndexMap.find(endpoint) != neighbourToIndexMap.end());
-
-		std::vector<double> min_distance;
-		std::vector<int> previous;
-		DijkstraComputePaths(neighbourToIndexMap[startpoint], adjacency_list, min_distance, previous);
-		std::list<int> path = DijkstraGetShortestPathTo(neighbourToIndexMap[endpoint], previous);
-
-		for (std::list<int>::const_iterator it = path.begin(); it != path.end(); it++) {
-			int thisIndex = *it;
-			std::map<Coord2D, int>::const_iterator found = neighbourToIndexMap.end();
-
-			for (std::map<Coord2D, int>::const_iterator nit = neighbourToIndexMap.begin(); nit != neighbourToIndexMap.end(); nit++) {
-				if (nit->second == thisIndex) {
-					found = nit;
-					break;
-				}
-			}
-
-			assert(found != neighbourToIndexMap.end());
-
-			generatedPath.push_back(found->first);
-		}
+		std::vector<Coord2D> generatedPath = dijkstra(neighbours, startpoint, endpoint, edgeAdder);
 
 		return generatedPath;
 	}

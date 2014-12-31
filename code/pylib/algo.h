@@ -2,27 +2,20 @@
 #define ROB_ALGO_H_INCLUDED
 
 #include "coord.h"
+#include "neighbours.h"
 
-#include <list>
+#include <boost/function.hpp>
+
 #include <vector>
 
-struct neighbour
-{
-	neighbour(int target, double weight);
+class Edge;
 
-	int target;
-	double weight;
-};
- 
-typedef std::vector< std::vector<neighbour> > adjacency_list_t;
- 
-void DijkstraComputePaths(int source,
-                          adjacency_list_t const &adjacency_list,
-                          std::vector<double> &min_distance,
-                          std::vector<int> &previous);
-
-std::list<int> DijkstraGetShortestPathTo(int vertex, std::vector<int> const &previous);
 std::vector< Coord2DTemplate<float> > catmullRom(std::vector<Coord2D> const &waypoints, unsigned int steps);
 
+std::vector<Coord2D> dijkstra(NeighboursMap const &neighbours,
+                              Coord2D const &startpoint, Coord2D const &endpoint,
+                              boost::function<bool(Edge const &, double &)> edgeAdder);
+
+std::vector<Coord2D> astar(NeighboursMap const &neighbours);
 
 #endif // ROB_ALGO_H_INCLUDED

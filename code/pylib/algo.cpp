@@ -1,7 +1,11 @@
 #include "algo.h"
+#include "edge.h"
 
 #include <algorithm>
+#include <cassert>
+#include <cmath>
 #include <limits>
+#include <list>
 #include <set>
 #include <utility>
 
@@ -11,6 +15,27 @@ namespace
 	Coord2DTemplate<float> catmullRomFirst(float t, Coord2D const &c1, Coord2D const &c2, Coord2D const &c3);
 	Coord2DTemplate<float> catmullRomMiddle(float t, Coord2D const &c1, Coord2D const &c2, Coord2D const &c3, Coord2D const &c4);
 	Coord2DTemplate<float> catmullRomLast(float t, Coord2D const &c1, Coord2D const &c2, Coord2D const &c3);
+
+	const double max_weight = std::numeric_limits<double>::infinity();
+
+	struct neighbour
+	{
+		neighbour(int target, double weight);
+
+		int target;
+		double weight;
+	};
+
+	typedef std::vector< std::vector<neighbour> > adjacency_list_t;
+
+	// dijkstra
+	void DijkstraComputePaths(int source,
+	                          const adjacency_list_t &adjacency_list,
+	                          std::vector<double> &min_distance,
+	                          std::vector<int> &previous);
+	std::list<int> DijkstraGetShortestPathTo(int vertex, const std::vector<int> &previous);
+
+	// a-star
 }
 
 namespace
@@ -112,7 +137,8 @@ std::vector< Coord2DTemplate<float> > catmullRom(std::vector<Coord2D> const &way
 	return pathPoints;
 }
 
-const double max_weight = std::numeric_limits<double>::infinity();
+namespace
+{
 
 neighbour::neighbour(int target, double weight)
 	: target(target),
@@ -170,4 +196,77 @@ std::list<int> DijkstraGetShortestPathTo(int vertex, const std::vector<int> &pre
 	}
 
 	return path;
+}
+
+}
+
+std::vector<Coord2D> dijkstra(NeighboursMap const &neighbours,
+                              Coord2D const &startpoint, Coord2D const &endpoint,
+                              boost::function<bool(Edge const &, double &)> edgeAdder)
+{
+	std::vector<Coord2D> generatedPath;
+	std::map<Coord2D, int> neighbourToIndexMap;
+
+	int i = 0;
+
+	// every coordinate gets an id
+	for (NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
+		Coord2D coord = it->first;
+
+		if (neighbourToIndexMap.find(coord) == neighbourToIndexMap.end()) {
+			neighbourToIndexMap[coord] = i++;
+		}
+	}
+
+	// check that every neighbour of a coordinate (which is also a coordinate) has an id
+	for (NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
+		for (std::set<Coord2D>::const_iterator cit = it->second.begin(); cit != it->second.end(); cit++) {
+			Coord2D checkCoord = *cit;
+			assert(neighbourToIndexMap.find(checkCoord) != neighbourToIndexMap.end());
+		}
+	}
+
+	adjacency_list_t adjacency_list(neighbours.size());
+
+	for (NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
+		Coord2D thisCoord = it->first;
+
+		for (std::set<Coord2D>::const_iterator cit = it->second.begin(); cit != it->second.end(); cit++) {
+			Coord2D thatCoord = *cit;
+
+			// now check that the neighbour coordinate can be reached
+			Edge checkEdge(thisCoord, thatCoord);
+			double distance;
+
+			if (edgeAdder(checkEdge, distance)) {
+				adjacency_list[neighbourToIndexMap[thisCoord]].push_back(neighbour(neighbourToIndexMap[thatCoord], distance));
+			}
+		}
+	}
+
+	assert(neighbourToIndexMap.find(startpoint) != neighbourToIndexMap.end());
+	assert(neighbourToIndexMap.find(endpoint) != neighbourToIndexMap.end());
+
+	std::vector<double> min_distance;
+	std::vector<int> previous;
+	DijkstraComputePaths(neighbourToIndexMap[startpoint], adjacency_list, min_distance, previous);
+	std::list<int> path = DijkstraGetShortestPathTo(neighbourToIndexMap[endpoint], previous);
+
+	for (std::list<int>::const_iterator it = path.begin(); it != path.end(); it++) {
+		int thisIndex = *it;
+		std::map<Coord2D, int>::const_iterator found = neighbourToIndexMap.end();
+
+		for (std::map<Coord2D, int>::const_iterator nit = neighbourToIndexMap.begin(); nit != neighbourToIndexMap.end(); nit++) {
+			if (nit->second == thisIndex) {
+				found = nit;
+				break;
+			}
+		}
+
+		assert(found != neighbourToIndexMap.end());
+
+		generatedPath.push_back(found->first);
+	}
+
+	return generatedPath;
 }
