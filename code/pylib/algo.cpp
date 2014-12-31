@@ -111,7 +111,7 @@ std::vector< Coord2DTemplate<float> > catmullRom(std::vector<Coord2D> const &way
 		Coord2D c4;
 		Coord2DTemplate<float> result;
 
-		for (float t = 0.0f; t < 1.0f; t += 1.0f / steps) {
+		for (float t = 0.0f; t <= 1.0f; t += 1.0f / steps) {
 			if (i == 0) {
 				c1 = waypoints[i];
 				c2 = waypoints[i + 1];
