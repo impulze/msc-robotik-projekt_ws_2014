@@ -420,7 +420,6 @@ void Drawing::DrawingImpl::paint()
 		}
 	}
 
-	
 	if (show_[ShowWaypoints]) {
 		glTranslatef(0.0f, 0.0f, 0.2f);
 		// yellow
