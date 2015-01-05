@@ -13,6 +13,11 @@ namespace
 		return bytes[0] == 0 && bytes[1] == 0 && bytes[2] == 0;
 	}
 
+	bool isGray(unsigned char const *bytes)
+	{
+		return bytes[0] == 200 && bytes[1] == 200 && bytes[2] == 200;
+	}
+
 	bool isWhite(unsigned char const *bytes)
 	{
 		return bytes[0] == 255 && bytes[1] == 255 && bytes[2] == 255;
@@ -102,13 +107,177 @@ RoomImage::RoomImage(std::string const &filename)
 {
 }
 
-std::vector<Polygon2D> RoomImage::getBorderPolygons(unsigned char distance) const
+std::vector<Polygon2D> RoomImage::expandPolygon(std::set<Coord2D> &coords) const
 {
 	std::vector<Polygon2D> borderPolygons;
 
+	enum DirectionType {
+		WEST,
+		SOUTH,
+		EAST,
+		NORTH
+	};
+
+	Polygon2D currentPolygon;
+	// walk east, sets store the coords low -> high
+	int currentDirection = EAST;
+	Coord2D coord = *coords.begin();
+	currentPolygon.push_back(coord);
+
+	while (!coords.empty()) {
+		bool hasWestNeighbours = coord.x > 0;
+		bool hasSouthNeighbours = coord.y < height() - 1;
+		bool hasEastNeighbours = coord.x < width() - 1;
+		bool hasNorthNeighbours = coord.y > 0;
+
+		std::set<Coord2D>::const_iterator insideNeighbours[4];
+
+		if (hasWestNeighbours) {
+			insideNeighbours[0] = coords.find(Coord2D(coord.x - 1, coord.y));
+		}
+
+		if (hasSouthNeighbours) {
+			insideNeighbours[1] = coords.find(Coord2D(coord.x, coord.y + 1));
+		}
+
+		if (hasEastNeighbours) {
+			insideNeighbours[2] = coords.find(Coord2D(coord.x + 1, coord.y));
+		}
+
+		if (hasNorthNeighbours) {
+			insideNeighbours[3] = coords.find(Coord2D(coord.x, coord.y - 1));
+		}
+
+		std::set<Coord2D>::const_iterator newCoord = coords.end();
+		bool switchedDirection = false;
+
+		// now do the work
+		switch (currentDirection) {
+			case WEST: {
+				if (insideNeighbours[WEST] != coords.end()) {
+					newCoord = insideNeighbours[WEST];
+					break;
+				}
+
+				int possibleDirections[2] = { NORTH, SOUTH };
+
+				for (int i = 0; i < 2; i++) {
+					int direction = possibleDirections[i];
+
+					if (insideNeighbours[direction] != coords.end()) {
+						newCoord = insideNeighbours[direction];
+						switchedDirection = true;
+						currentDirection = direction;
+						break;
+					}
+				}
+
+				break;
+			}
+
+			case SOUTH: {
+				if (insideNeighbours[SOUTH] != coords.end()) {
+					newCoord = insideNeighbours[SOUTH];
+					break;
+				}
+
+				int possibleDirections[2] = { WEST, EAST };
+
+				for (int i = 0; i < 2; i++) {
+					int direction = possibleDirections[i];
+
+					if (insideNeighbours[direction] != coords.end()) {
+						newCoord = insideNeighbours[direction];
+						switchedDirection = true;
+						currentDirection = direction;
+						break;
+					}
+				}
+
+				break;
+			}
+
+			case EAST: {
+				if (insideNeighbours[EAST] != coords.end()) {
+					newCoord = insideNeighbours[EAST];
+					break;
+				}
+
+				int possibleDirections[2] = { SOUTH, NORTH };
+
+				for (int i = 0; i < 2; i++) {
+					int direction = possibleDirections[i];
+
+					if (insideNeighbours[direction] != coords.end()) {
+						newCoord = insideNeighbours[direction];
+						switchedDirection = true;
+						currentDirection = direction;
+						break;
+					}
+				}
+
+				break;
+			}
+
+			case NORTH: {
+				if (insideNeighbours[NORTH] != coords.end()) {
+					newCoord = insideNeighbours[NORTH];
+					break;
+				}
+
+				int possibleDirections[2] = { WEST, EAST };
+
+				for (int i = 0; i < 2; i++) {
+					int direction = possibleDirections[i];
+
+					if (insideNeighbours[direction] != coords.end()) {
+						newCoord = insideNeighbours[direction];
+						switchedDirection = true;
+						currentDirection = direction;
+						break;
+					}
+				}
+
+				break;
+			}
+
+		}
+
+		coords.erase(coord);
+
+		if (switchedDirection) {
+			currentPolygon.push_back(coord);
+		}
+
+		if (newCoord == coords.end()) {
+			// support lines
+			if (currentPolygon.size() == 1) {
+				currentPolygon.push_back(coord);
+			}
+
+			borderPolygons.push_back(currentPolygon);
+			currentPolygon = Polygon2D();
+
+			if (coords.empty()) {
+				break;
+			}
+
+			coord = *coords.begin();
+		} else {
+			coord = *newCoord;
+		}
+	}
+
+	return borderPolygons;
+}
+
+void RoomImage::getBorderPolygons(unsigned char distance, std::vector<Polygon2D> &borderPolygons,
+                                  std::vector<Polygon2D> &doorPolygons) const
+{
 	enum CoordType {
 		OUTSIDE,
 		WALL_OR_OBJECT_OUTLINE,
+		DOOR,
 		INSIDE,
 		COLLISION
 	};
@@ -128,6 +297,8 @@ std::vector<Polygon2D> RoomImage::getBorderPolygons(unsigned char distance) cons
 				coordTypes[coord] = OUTSIDE;
 			} else if (isBlack(bytes)) {
 				coordTypes[coord] = WALL_OR_OBJECT_OUTLINE;
+			} else if (isGray(bytes)) {
+				coordTypes[coord] = DOOR;
 			} else {
 				coordTypes[coord] = INSIDE;
 			}
@@ -138,7 +309,7 @@ std::vector<Polygon2D> RoomImage::getBorderPolygons(unsigned char distance) cons
 	CoordTypesMap copyCoordTypes = coordTypes;
 
 	for (CoordTypesMap::const_iterator it = copyCoordTypes.begin(); it != copyCoordTypes.end(); it++) {
-		if (it->second != INSIDE) {
+		if (it->second != INSIDE && it->second != DOOR) {
 			coordTypes[it->first] = it->second;
 			continue;
 		}
@@ -156,16 +327,18 @@ std::vector<Polygon2D> RoomImage::getBorderPolygons(unsigned char distance) cons
 	}
 
 	std::set<Coord2D> insideCoords;
+	std::set<Coord2D> doorCoords;
 
 	// first find all coordinates inside the room
 	for (CoordTypesMap::const_iterator it = coordTypes.begin(); it != coordTypes.end(); it++) {
-		if (it->second != INSIDE) {
+		bool insideCoord = it->second == INSIDE;
+		bool doorCoord = it->second == DOOR;
+
+		if (!insideCoord && !doorCoord) {
 			continue;
 		}
 
 		std::vector<Coord2D> neighbours = createNeighbours(it->first, width(), height());
-
-		bool neighboursInside = true;
 
 		// expand neighbours
 		for (std::vector<Coord2D>::const_iterator nit = neighbours.begin(); nit != neighbours.end(); nit++) {
@@ -174,172 +347,17 @@ std::vector<Polygon2D> RoomImage::getBorderPolygons(unsigned char distance) cons
 
 			assert(foundCoordType != coordTypes.end());
 
-			if (foundCoordType->second != INSIDE) {
-				neighboursInside = false;
+			if (doorCoord && foundCoordType->second != DOOR) {
+				doorCoords.insert(it->first);
+			}
+
+			if (foundCoordType->second != INSIDE && foundCoordType->second != DOOR) {
+				insideCoords.insert(it->first);
 				break;
 			}
-		}
-
-		if (!neighboursInside) {
-			// not all neighbours are inside, this one is an edge vertex
-			insideCoords.insert(it->first);
 		}
 	}
 
-	enum DirectionType {
-		WEST,
-		SOUTH,
-		EAST,
-		NORTH
-	};
-
-	Polygon2D currentPolygon;
-	int currentDirection = WEST;
-	Coord2D coord = *insideCoords.begin();
-	currentPolygon.push_back(coord);
-
-	while (!insideCoords.empty()) {
-		bool hasWestNeighbours = coord.x > 0;
-		bool hasSouthNeighbours = coord.y < height() - 1;
-		bool hasEastNeighbours = coord.x < width() - 1;
-		bool hasNorthNeighbours = coord.y > 0;
-
-		std::set<Coord2D>::const_iterator insideNeighbours[8];
-
-		for (int i = 0; i < 8; i++) {
-			insideNeighbours[0] == insideCoords.end();
-		}
-
-		if (hasWestNeighbours) {
-			insideNeighbours[0] = insideCoords.find(Coord2D(coord.x - 1, coord.y));
-		}
-
-		if (hasSouthNeighbours) {
-			insideNeighbours[1] = insideCoords.find(Coord2D(coord.x, coord.y + 1));
-		}
-
-		if (hasEastNeighbours) {
-			insideNeighbours[2] = insideCoords.find(Coord2D(coord.x + 1, coord.y));
-		}
-
-		if (hasNorthNeighbours) {
-			insideNeighbours[3] = insideCoords.find(Coord2D(coord.x, coord.y - 1));
-		}
-
-		std::set<Coord2D>::const_iterator newCoord = insideCoords.end();
-		bool switchedDirection = false;
-
-		// now do the work
-		switch (currentDirection) {
-			case WEST: {
-				if (insideNeighbours[WEST] != insideCoords.end()) {
-					newCoord = insideNeighbours[WEST];
-					break;
-				}
-
-				int possibleDirections[2] = { NORTH, SOUTH };
-
-				for (int i = 0; i < 2; i++) {
-					int direction = possibleDirections[i];
-
-					if (insideNeighbours[direction] != insideCoords.end()) {
-						newCoord = insideNeighbours[direction];
-						switchedDirection = true;
-						currentDirection = direction;
-						break;
-					}
-				}
-
-				break;
-			}
-
-			case SOUTH: {
-				if (insideNeighbours[SOUTH] != insideCoords.end()) {
-					newCoord = insideNeighbours[SOUTH];
-					break;
-				}
-
-				int possibleDirections[2] = { WEST, EAST };
-
-				for (int i = 0; i < 2; i++) {
-					int direction = possibleDirections[i];
-
-					if (insideNeighbours[direction] != insideCoords.end()) {
-						newCoord = insideNeighbours[direction];
-						switchedDirection = true;
-						currentDirection = direction;
-						break;
-					}
-				}
-
-				break;
-			}
-
-			case EAST: {
-				if (insideNeighbours[EAST] != insideCoords.end()) {
-					newCoord = insideNeighbours[EAST];
-					break;
-				}
-
-				int possibleDirections[2] = { SOUTH, NORTH };
-
-				for (int i = 0; i < 2; i++) {
-					int direction = possibleDirections[i];
-
-					if (insideNeighbours[direction] != insideCoords.end()) {
-						newCoord = insideNeighbours[direction];
-						switchedDirection = true;
-						currentDirection = direction;
-						break;
-					}
-				}
-
-				break;
-			}
-
-			case NORTH: {
-				if (insideNeighbours[NORTH] != insideCoords.end()) {
-					newCoord = insideNeighbours[NORTH];
-					break;
-				}
-
-				int possibleDirections[2] = { WEST, EAST };
-
-				for (int i = 0; i < 2; i++) {
-					int direction = possibleDirections[i];
-
-					if (insideNeighbours[direction] != insideCoords.end()) {
-						newCoord = insideNeighbours[direction];
-						switchedDirection = true;
-						currentDirection = direction;
-						break;
-					}
-				}
-
-				break;
-			}
-
-		}
-
-		insideCoords.erase(coord);
-
-		if (switchedDirection) {
-			currentPolygon.push_back(coord);
-		}
-
-		if (newCoord == insideCoords.end()) {
-			borderPolygons.push_back(currentPolygon);
-			currentPolygon = Polygon2D();
-
-			if (insideCoords.empty()) {
-				break;
-			}
-
-			coord = *insideCoords.begin();
-		} else {
-			coord = *newCoord;
-		}
-	}
-
-	return borderPolygons;
+	borderPolygons = expandPolygon(insideCoords);
+	doorPolygons = expandPolygon(doorCoords);
 }

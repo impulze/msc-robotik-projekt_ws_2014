@@ -275,7 +275,7 @@ void Drawing::DrawingImpl::mouseClick(int x, int y, Drawing::MouseButton button)
 
 void Drawing::DrawingImpl::initialize()
 {
-	fromImage("/home/impulze/Diagramm2.png");
+	fromImage("/home/impulze/Diagramm3.png");
 	glEnable(GL_DEPTH_TEST);
 
 	GLdouble vertices[(300 + 1) * 2];

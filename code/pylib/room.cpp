@@ -21,7 +21,10 @@ struct Room::RoomImpl
 		this->distance = distance;
 
 		// this array below distinguishes between big room (first) and holes
-		std::vector<Polygon2D> const &borderPolygons = image->getBorderPolygons(distance);
+		std::vector<Polygon2D> borderPolygons;
+		std::vector<Polygon2D> doorPolygons;
+
+		image->getBorderPolygons(distance, borderPolygons, doorPolygons);
 
 		// this array doesn't distinguish between big room and holes
 		//std::vector<Edge> constraints = roomTriangulation.getConstrainedEdges();
@@ -68,6 +71,31 @@ struct Room::RoomImpl
 		}
 
 		reinitializeTriangulation();
+
+		for (std::vector<Polygon2D>::const_iterator it = doorPolygons.begin();
+		     it != doorPolygons.end();
+		     it++) {
+			assert(it->size() == 2);
+
+			Coord2D first = (*it)[0];
+			Coord2D second = (*it)[1];
+
+			int diffX = static_cast<int>(first.x) - static_cast<int>(second.x);
+			int diffY = static_cast<int>(first.y) - static_cast<int>(second.y);
+
+			if (diffX < 0) {
+				diffX *= -1;
+			}
+
+			if (diffY < 0) {
+				diffY *= -1;
+			}
+
+			unsigned int newX = std::min(first.x, second.x) + diffX / 2;
+			unsigned int newY = std::min(first.y, second.y) + diffY / 2;
+
+			insert(Coord2D(newX, newY));
+		}
 	}
 
 	RoomImage *image;
