@@ -18,21 +18,22 @@ namespace
 
 	const double max_weight = std::numeric_limits<double>::infinity();
 
-	struct neighbour
+	struct NeighbourWithDistance
 	{
-		neighbour(int target, double weight);
+		NeighbourWithDistance(Coord2D const &target, double weight);
 
-		int target;
+		Coord2D target;
 		double weight;
 	};
 
-	typedef std::vector< std::vector<neighbour> > adjacency_list_t;
+	typedef std::map< Coord2D, std::vector<NeighbourWithDistance> > adjacency_list_t;
 
 	// dijkstra
-	void DijkstraComputePaths(int source,
-	                          const adjacency_list_t &adjacency_list,
-	                          std::vector<int> &previous);
-	std::list<int> DijkstraGetShortestPathTo(int vertex, const std::vector<int> &previous);
+	void DijkstraComputePaths(Coord2D const &source,
+	                          adjacency_list_t const &adjacency_list,
+	                          std::map<Coord2D, Coord2D> &previous);
+	std::list<Coord2D> DijkstraGetShortestPathTo(Coord2D const &vertex,
+	                                             std::map<Coord2D, Coord2D> const &previous);
 
 	// a-star
 }
@@ -139,58 +140,71 @@ std::vector< Coord2DTemplate<float> > catmullRom(std::vector<Coord2D> const &way
 namespace
 {
 
-neighbour::neighbour(int target, double weight)
+NeighbourWithDistance::NeighbourWithDistance(Coord2D const &target, double weight)
 	: target(target),
 	  weight(weight)
 {
 }
 
-void DijkstraComputePaths(int source,
-                          const adjacency_list_t &adjacency_list,
-                          std::vector<int> &previous)
+void DijkstraComputePaths(Coord2D const &source,
+                          adjacency_list_t const &adjacency_list,
+                          std::map<Coord2D, Coord2D> &previous)
 {
-	std::vector<double> min_distance;
-	adjacency_list_t::size_type n = adjacency_list.size();
-	min_distance.resize(n, max_weight);
+	std::map<Coord2D, double> min_distance;
+	std::set< std::pair<double, Coord2D> > vertex_queue;
+
 	min_distance[source] = 0;
-	previous.clear();
-	previous.resize(n, -1);
-	std::set< std::pair<double, int> > vertex_queue;
-	vertex_queue.insert(std::make_pair(min_distance[source], source));
+	vertex_queue.insert(std::make_pair(0, source));
  
 	while (!vertex_queue.empty()) {
 		double dist = vertex_queue.begin()->first;
-		int u = vertex_queue.begin()->second;
+		Coord2D u = vertex_queue.begin()->second;
 		vertex_queue.erase(vertex_queue.begin());
  
 		// Visit each edge exiting u
-		const std::vector<neighbour> &neighbours = adjacency_list[u];
+		adjacency_list_t::const_iterator alIt = adjacency_list.find(u);
 
-		for (std::vector<neighbour>::const_iterator neighbour_iter = neighbours.begin();
+		assert(alIt != adjacency_list.end());
+
+		const std::vector<NeighbourWithDistance> &neighbours = alIt->second;
+
+		for (std::vector<NeighbourWithDistance>::const_iterator neighbour_iter = neighbours.begin();
 		     neighbour_iter != neighbours.end();
 		     neighbour_iter++) {
-			int v = neighbour_iter->target;
+			Coord2D v = neighbour_iter->target;
 			double weight = neighbour_iter->weight;
 			double distance_through_u = dist + weight;
 
-			if (distance_through_u < min_distance[v]) {
-				vertex_queue.erase(std::make_pair(min_distance[v], v));
+			std::map<Coord2D, double>::iterator it = min_distance.find(v);
+
+			if (it == min_distance.end() || distance_through_u < it->second) {
+				if (it != min_distance.end()) {
+					vertex_queue.erase(std::make_pair(it->second, v));
+				}
 
 				min_distance[v] = distance_through_u;
 				previous[v] = u;
 
-				vertex_queue.insert(std::make_pair(min_distance[v], v));
+				vertex_queue.insert(std::make_pair(distance_through_u, v));
 			}
 		}
 	}
 }
 
-std::list<int> DijkstraGetShortestPathTo(int vertex, const std::vector<int> &previous)
+std::list<Coord2D> DijkstraGetShortestPathTo(Coord2D const &vertex, std::map<Coord2D, Coord2D> const &previous)
 {
-	std::list<int> path;
+	std::list<Coord2D> path;
+	Coord2D current = vertex;
 
-	for (; vertex != -1; vertex = previous[vertex]) {
-		path.push_front(vertex);
+	while (true) {
+		path.push_front(current);
+		std::map<Coord2D, Coord2D>::const_iterator it = previous.find(current);
+
+		if (it != previous.end()) {
+			current = it->second;
+		} else {
+			break;
+		}
 	}
 
 	return path;
@@ -223,7 +237,7 @@ std::vector<Coord2D> dijkstra(NeighboursMap const &neighbours,
 		}
 	}
 
-	adjacency_list_t adjacency_list(neighbours.size());
+	adjacency_list_t adjacency_list;
 
 	for (NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
 		Coord2D thisCoord = it->first;
@@ -235,32 +249,18 @@ std::vector<Coord2D> dijkstra(NeighboursMap const &neighbours,
 			double yDistance = static_cast<double>(thatCoord.y) - thisCoord.y;
 			double distance = std::sqrt(xDistance * xDistance + yDistance * yDistance);
 
-			adjacency_list[neighbourToIndexMap[thisCoord]].push_back(neighbour(neighbourToIndexMap[thatCoord], distance));
+			adjacency_list[thisCoord].push_back(NeighbourWithDistance(thatCoord, distance));
 		}
 	}
 
 	assert(neighbourToIndexMap.find(startpoint) != neighbourToIndexMap.end());
 	assert(neighbourToIndexMap.find(endpoint) != neighbourToIndexMap.end());
 
-	std::vector<int> previous;
-	DijkstraComputePaths(neighbourToIndexMap[startpoint], adjacency_list, previous);
-	std::list<int> path = DijkstraGetShortestPathTo(neighbourToIndexMap[endpoint], previous);
+	std::map<Coord2D, Coord2D> previous;
+	DijkstraComputePaths(startpoint, adjacency_list, previous);
+	std::list<Coord2D> path = DijkstraGetShortestPathTo(endpoint, previous);
 
-	for (std::list<int>::const_iterator it = path.begin(); it != path.end(); it++) {
-		int thisIndex = *it;
-		std::map<Coord2D, int>::const_iterator found = neighbourToIndexMap.end();
-
-		for (std::map<Coord2D, int>::const_iterator nit = neighbourToIndexMap.begin(); nit != neighbourToIndexMap.end(); nit++) {
-			if (nit->second == thisIndex) {
-				found = nit;
-				break;
-			}
-		}
-
-		assert(found != neighbourToIndexMap.end());
-
-		generatedPath.push_back(found->first);
-	}
+	std::copy(path.begin(), path.end(), std::back_inserter(generatedPath));
 
 	return generatedPath;
 }
