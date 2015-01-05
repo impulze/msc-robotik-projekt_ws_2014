@@ -164,7 +164,9 @@ void DijkstraComputePaths(Coord2D const &source,
 		// Visit each edge exiting u
 		adjacency_list_t::const_iterator alIt = adjacency_list.find(u);
 
-		assert(alIt != adjacency_list.end());
+		if (alIt == adjacency_list.end()) {
+			continue;
+		}
 
 		const std::vector<NeighbourWithDistance> &neighbours = alIt->second;
 
