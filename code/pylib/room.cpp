@@ -209,6 +209,11 @@ struct Room::RoomImpl
 		return true;
 	}
 
+	bool pointInside(float x, float y) const
+	{
+		return roomTriangulation.inDomain(x, y);
+	}
+
 	bool intersectsEdges(Edge const &checkEdge_) const
 	{
 		Edge checkEdge(checkEdge_);
@@ -450,6 +455,11 @@ NeighboursMap Room::getNeighbours() const
 std::vector< std::vector<Edge> > Room::getEdges() const
 {
 	return p->edges;
+}
+
+bool Room::pointInside(float x, float y) const
+{
+	return p->pointInside(x, y);
 }
 
 bool Room::intersectsEdges(Edge const &checkEdge) const

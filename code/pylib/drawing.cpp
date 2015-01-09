@@ -74,6 +74,8 @@ public:
 
 	void fromImage(const char *name);
 
+	void updateRoom();
+
 	void setNodes(int amount);
 	void setWaypointModification(Drawing::WaypointModification modification);
 	void setOption(Drawing::Option option, bool enabled);
@@ -87,17 +89,21 @@ public:
 	bool checkNode(int x, int y);
 	bool delNode(int x, int y);
 	void drawPoint(int x, int y);
+	void drawCross(int x, int y);
 	bool getCoordFromMouseClick(int x, int y, Coord2D &coord);
 
 	Drawing::WaypointModification waypointModification;
 	GLint viewport[4];
 	GLuint circleVBO;
+	GLuint crossVBO;
 	Room *room;
 	Texture *texture;
 	bool show_[4];
 	std::vector<Triangle> triangulation;
 	std::vector<Triangle> roomTriangulation;
 	std::vector<Coord2D> path;
+	std::vector< Coord2DTemplate<float> > pathPoints;
+	std::set< Coord2DTemplate<float> > pathCollisions;
 	Coord2D neighbourToShow;
 	// mapping of a coord and intersection value
 	std::map<Coord2D, bool> neighbourToShowNeighbours;
@@ -143,6 +149,21 @@ void Drawing::DrawingImpl::fromImage(const char *name)
 	roomTriangulation = room->getRoomTriangulation();
 }
 
+void Drawing::DrawingImpl::updateRoom()
+{
+	triangulation = room->getTriangulation();
+	path = room->generatePath();
+	pathPoints = catmullRom(path, 50);
+
+	pathCollisions.clear();
+
+	for (std::vector< Coord2DTemplate<float> >::const_iterator it = pathPoints.begin(); it != pathPoints.end(); ++it) {
+		if (!room->pointInside(it->x, it->y)) {
+			pathCollisions.insert(*it);
+		}
+	}
+}
+
 void Drawing::DrawingImpl::setNodes(int amount)
 {
 	room->clearWaypoints();
@@ -157,8 +178,7 @@ void Drawing::DrawingImpl::setNodes(int amount)
 		}
 	}
 
-	triangulation = room->getTriangulation();
-	path = room->generatePath();
+	updateRoom();
 }
 
 void Drawing::DrawingImpl::setWaypointModification(Drawing::WaypointModification modification)
@@ -230,8 +250,7 @@ void Drawing::DrawingImpl::mouseClick(int x, int y, Drawing::MouseButton button)
 		}
 
 		if (changed) {
-			triangulation = room->getTriangulation();
-			path = room->generatePath();
+			updateRoom();
 		}
 	} else if (button == Drawing::RightMouseButton) {
 		Coord2D coord;
@@ -305,6 +324,27 @@ void Drawing::DrawingImpl::initialize()
 		glDeleteBuffers(1, &circleVBO);
 	}
 
+	{
+		vertices[0] = -3; vertices[1] = -3;
+		vertices[2] = 3; vertices[3] = 3;
+		vertices[4] = -3; vertices[5] = 3;
+		vertices[6] = 3; vertices[7] = -3;
+	}
+
+	glGenBuffersARB(2, &crossVBO);
+	throwErrorFromGLError();
+
+	try {
+		glBindBufferARB(GL_ARRAY_BUFFER_ARB, crossVBO);
+		throwErrorFromGLError();
+		glBufferDataARB(GL_ARRAY_BUFFER_ARB, sizeof *vertices * 8, vertices, GL_STATIC_DRAW);
+		throwErrorFromGLError();
+		glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
+		throwErrorFromGLError();
+	} catch (...) {
+		glDeleteBuffers(2, &crossVBO);
+	}
+
 	while (true) {
 		int randX = randomAtMost(texture->width() - 1);
 		int randY = randomAtMost(texture->height() - 1);
@@ -323,14 +363,22 @@ void Drawing::DrawingImpl::initialize()
 		}
 	}
 
+// check if triangles go through walls
+#if 0
 	room->insertWaypoint(Coord2D(352, 277));
 	room->insertWaypoint(Coord2D(401, 271));
 	room->setStartpoint(Coord2D(410, 255));
 	//room->setStartpoint(Coord2D(557, 317));
 	room->setEndpoint(Coord2D(330, 287));
+#endif
 
-	triangulation = room->getTriangulation();
-	path = room->generatePath();
+// check if path goes through walls
+#if 1
+	room->setStartpoint(Coord2D(543, 62));
+	room->setEndpoint(Coord2D(531, 122));
+#endif
+
+	updateRoom();
 }
 
 void Drawing::DrawingImpl::paint()
@@ -374,12 +422,6 @@ void Drawing::DrawingImpl::paint()
 	glEnd();
 	glDisable(GL_TEXTURE_2D);
 
-	// Waypoints
-	glBindBuffer(GL_ARRAY_BUFFER, circleVBO);
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glVertexPointer(2, GL_DOUBLE, 0, 0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-
 	if (show_[ShowTriangulation]) {
 		glTranslatef(0.0f, 0.0f, 0.2f);
 		// light blue
@@ -419,6 +461,12 @@ void Drawing::DrawingImpl::paint()
 			glEnd();
 		}
 	}
+
+	// Waypoints
+	glBindBuffer(GL_ARRAY_BUFFER, circleVBO);
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(2, GL_DOUBLE, 0, 0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	if (show_[ShowWaypoints]) {
 		glTranslatef(0.0f, 0.0f, 0.2f);
@@ -478,8 +526,6 @@ void Drawing::DrawingImpl::paint()
 		glColor3f(0.2f, 0.2f, 0.2f);
 		glLineWidth(2.0f);
 		glBegin(GL_LINE_STRIP);
-		std::vector< Coord2DTemplate<float> > pathPoints = catmullRom(path, 50);
-
 		for (std::vector< Coord2DTemplate<float> >::const_iterator it = pathPoints.begin();
 		     it != pathPoints.end();
 		     ++it) {
@@ -495,6 +541,19 @@ void Drawing::DrawingImpl::paint()
 	glTranslatef(0.0f, 0.0f, 0.2f);
 	glColor3f(0.0f, 1.0f, 0.0f);
 	drawPoint(room->getStartpoint().x, room->getStartpoint().y);
+
+	// Collisions
+	if (!pathCollisions.empty()) {
+		glBindBuffer(GL_ARRAY_BUFFER, crossVBO);
+		glEnableClientState(GL_VERTEX_ARRAY);
+		glVertexPointer(2, GL_DOUBLE, 0, 0);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glColor3f(1.0f, 0.0f, 0.0f);
+
+		for (std::set< Coord2DTemplate<float> >::const_iterator it = pathCollisions.begin(); it != pathCollisions.end(); ++it) {
+			drawCross(it->x, it->y);
+		}
+	}
 
 	glDisableClientState(GL_VERTEX_ARRAY);
 
@@ -553,6 +612,15 @@ void Drawing::DrawingImpl::drawPoint(int x, int y)
 		glDrawArrays(GL_TRIANGLE_FAN, 0, 301);
 		glTranslatef(-offsetX, -offsetY, 0.0f);
 #endif
+}
+
+void Drawing::DrawingImpl::drawCross(int x, int y)
+{
+	int offsetX = x;
+	int offsetY = texture->height() - 1 - y;
+	glTranslatef(offsetX, offsetY, 0.0f);
+	glDrawArrays(GL_LINES, 0, 8);
+	glTranslatef(-offsetX, -offsetY, 0.0f);
 }
 
 bool Drawing::DrawingImpl::getCoordFromMouseClick(int x, int y, Coord2D &coord)

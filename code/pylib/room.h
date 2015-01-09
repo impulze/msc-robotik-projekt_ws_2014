@@ -33,6 +33,7 @@ public:
 
 	NeighboursMap getNeighbours() const;
 	std::vector< std::vector<Edge> > getEdges() const;
+	bool pointInside(float x, float y) const;
 	bool intersectsEdges(Edge const &checkEdge) const;
 	std::vector<Triangle> getTriangulation() const;
 	std::vector<Triangle> getRoomTriangulation() const;
