@@ -322,7 +322,7 @@ struct Room::RoomImpl
 					}
 				}
 
-				return false;
+				continue;
 			}
 
 			if (!intersectionPoints.empty()) {
@@ -331,7 +331,7 @@ struct Room::RoomImpl
 
 				if ((x == checkEdge.start.x && y == checkEdge.start.y) ||
 				    (x == checkEdge.end.x && y == checkEdge.end.y)) {
-					return false;
+					continue;
 				}
 
 				return true;
