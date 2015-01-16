@@ -1,7 +1,7 @@
 #ifndef ROB_DRAWWIDGET_H_INCLUDED
 #define ROB_DRAWWIDGET_H_INCLUDED
 
-#include <QWidget>
+#include <QtWidgets/QWidget>
 
 class Drawing;
 
@@ -17,6 +17,10 @@ public:
 private:
 	DrawWidget(const DrawWidget &other);
 	DrawWidget &operator=(const DrawWidget &other);
+
+	bool eventFilter(QObject *object, QEvent *event);
+
+	Drawing *drawing_;
 };
 
 #endif // ROB_DRAWWIDGET_H_INCLUDED

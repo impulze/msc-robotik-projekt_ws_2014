@@ -1,7 +1,7 @@
 #ifndef ROB_OPENGLDRAWWIDGET_H_INCLUDED
 #define ROB_OPENGLDRAWWIDGET_H_INCLUDED
 
-#include <QOpenGLWidget>
+#include <QtWidgets/QOpenGLWidget>
 
 class Drawing;
 
