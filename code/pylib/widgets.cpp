@@ -10,6 +10,7 @@
 #include <QtWidgets/QLayout>
 #include <QtWidgets/QLineEdit>
 #include <QtWidgets/QMenuBar>
+#include <QtWidgets/QTextEdit>
 
 #include <cstdio>
 #include <vector>
@@ -71,6 +72,8 @@ CentralWidget::CentralWidget(QWidget *parent)
 {
 	drawing_ = new Drawing;
 	drawWidget_ = new DrawWidget(drawing_, this);
+	infoTextEdit_ = new QTextEdit(this);
+	infoTextEdit_->setDisabled(true);
 
 	QLabel *amountLabel = new QLabel(tr("Amount of nodes"), this);
 	QLineEdit *amountField = new QLineEdit(this);
@@ -114,12 +117,24 @@ CentralWidget::CentralWidget(QWidget *parent)
 	sideLayout->addWidget(boxShowPath_);
 	QSpacerItem *spacer = new QSpacerItem(1, 1, QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
 	sideLayout->addItem(spacer);
+	sideLayout->addWidget(infoTextEdit_);
 	QHBoxLayout *mainLayout = new QHBoxLayout(this);
 	mainLayout->addLayout(sideLayout);
 	mainLayout->addWidget(drawWidget_, 1);
 
 	boxShowWay_->setCheckState(Qt::Checked);
 	boxShowPath_->setCheckState(Qt::Checked);
+
+	CheckBoxEventFilter *filter = new CheckBoxEventFilter(this);
+	boxAdd_->installEventFilter(filter);
+	printf("box add %p\n", boxAdd_);
+	boxDel_->installEventFilter(filter);
+	boxStart_->installEventFilter(filter);
+	boxEnd_->installEventFilter(filter);
+	boxShowTri_->installEventFilter(filter);
+	boxShowRoomTri_->installEventFilter(filter);
+	boxShowWay_->installEventFilter(filter);
+	boxShowPath_->installEventFilter(filter);
 }
 
 void CentralWidget::checkBoxChanged(int state)
@@ -192,4 +207,48 @@ void CentralWidget::amountOfNodesChanged()
 	std::printf("The amount of nodes changed to: '%d'\n", num);
 
 	drawing_->setNodes(num);
+}
+
+bool CentralWidget::checkBoxEvent(QObject *object, QEvent *event)
+{
+	if (event->type() != QEvent::Enter && event->type() != QEvent::Leave) {
+		return QObject::eventFilter(object, event);
+	}
+
+	QObject *sender = object;
+	std::string showText;
+
+	if (sender == boxAdd_) {
+		showText = "Add waypoints (left mouse click) if it's inside the room domain.";
+	} else if (sender == boxDel_) {
+		showText = "Delete a waypoint (left mouse click on a waypoint).";
+	} else if (sender == boxStart_) {
+		showText = "Set the startpoint (left mouse click) if it's inside the room domain.";
+	} else if (sender == boxEnd_) {
+		showText = "Set the endpoint (left mouse click) if it's inside the room domain.";
+	} else if (sender == boxShowTri_) {
+		showText = "Show the triangulation of all waypoints (including startpoint and endpoint).";
+	} else if (sender == boxShowRoomTri_) {
+		showText = "Show the room triangulation of all corner vertices of the room. This triangulation is used to check if a point is inside the domain (triangles).";
+	} else if (sender == boxShowWay_) {
+		showText = "Show the waypoints (including startpoint and endpoint).";
+	} else if (sender == boxShowPath_) {
+		showText = "Show the generated path (if possible) and collisions with red markers (if any).";
+	}
+
+	if (!showText.empty()) {
+		infoTextEdit_->setText(QString::fromStdString(showText));
+	}
+
+	return QObject::eventFilter(object, event);
+}
+
+CheckBoxEventFilter::CheckBoxEventFilter(CentralWidget *central)
+	: central_(central)
+{
+}
+
+bool CheckBoxEventFilter::eventFilter(QObject *object, QEvent *event)
+{
+	return central_->checkBoxEvent(object, event);
 }

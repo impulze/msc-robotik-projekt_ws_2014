@@ -6,6 +6,7 @@
 class Drawing;
 class DrawWidget;
 class QCheckBox;
+class QTextEdit;
 
 class MainWindow
 	: public QMainWindow
@@ -41,6 +42,9 @@ private Q_SLOTS:
 	void amountOfNodesChanged();
 
 private:
+	bool checkBoxEvent(QObject *object, QEvent *event);
+
+private:
 	Drawing *drawing_;
 	DrawWidget *drawWidget_;
 	QCheckBox *boxAdd_;
@@ -51,6 +55,23 @@ private:
 	QCheckBox *boxShowRoomTri_;
 	QCheckBox *boxShowWay_;
 	QCheckBox *boxShowPath_;
+	QTextEdit *infoTextEdit_;
+
+	friend class CheckBoxEventFilter;
+};
+
+class CheckBoxEventFilter
+	: public QObject
+{
+	Q_OBJECT
+
+public:
+	CheckBoxEventFilter(CentralWidget *central);
+
+	bool eventFilter(QObject *object, QEvent *event);
+
+private:
+	CentralWidget *central_;
 };
 
 #endif // ROB_WIDGETS_H_INCLUDED

@@ -376,6 +376,7 @@ void Drawing::DrawingImpl::initialize()
 #if 1
 	room->setStartpoint(Coord2D(543, 62));
 	room->setEndpoint(Coord2D(531, 122));
+	room->insertWaypoint(Coord2D(610, 100));
 #endif
 
 	updateRoom();
