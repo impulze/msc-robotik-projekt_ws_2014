@@ -91,6 +91,7 @@ public:
 	void drawPoint(int x, int y);
 	void drawCross(int x, int y);
 	bool getCoordFromMouseClick(int x, int y, Coord2D &coord);
+	void showNeighbours(Coord2D const &coord);
 
 	Drawing::WaypointModification waypointModification;
 	GLint viewport[4];
@@ -98,7 +99,7 @@ public:
 	GLuint crossVBO;
 	Room *room;
 	Texture *texture;
-	bool show_[4];
+	bool show_[5];
 	std::vector<Triangle> triangulation;
 	std::vector<Triangle> roomTriangulation;
 	std::vector<Coord2D> path;
@@ -193,6 +194,7 @@ void Drawing::DrawingImpl::setOption(Drawing::Option option, bool enabled)
 		case Drawing::ShowRoomTriangulation:
 		case Drawing::ShowWaypoints:
 		case Drawing::ShowPath:
+		case Drawing::ShowNeighbours:
 			show_[option] = enabled;
 			break;
 	}
@@ -244,50 +246,23 @@ void Drawing::DrawingImpl::mouseClick(int x, int y, Drawing::MouseButton button)
 			case Drawing::WaypointEnd:
 				changed = room->setEndpoint(Coord2D(x, y));
 				break;
-
+		
 			default:
 				break;
 		}
 
+		if (show_[ShowNeighbours]) {
+			Coord2D coord;
+
+			if (!getCoordFromMouseClick(x, y, coord)) {
+				return;
+			}
+
+			showNeighbours(coord);
+		}
+
 		if (changed) {
 			updateRoom();
-		}
-	} else if (button == Drawing::RightMouseButton) {
-		Coord2D coord;
-
-		if (!getCoordFromMouseClick(x, y, coord)) {
-			return;
-		}
-
-		NeighboursMap neighbours = room->getNeighbours();
-
-		for (NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
-			Coord2D thisCoord(it->first.x, it->first.y);
-
-			if (coord == thisCoord) {
-				neighbourToShow = coord;
-				if (neighbourToShowNeighbours.empty()) {
-					for (std::set<Coord2D>::const_iterator sit = it->second.begin(); sit != it->second.end(); sit++) {
-						Edge edge(neighbourToShow, *sit);
-						// store if this edge intersects any polygon boundary edge
-						neighbourToShowNeighbours[*sit] = room->intersectsEdges(edge);
-						printf("intersects %d\n", neighbourToShowNeighbours[*sit]);
-					}
-				} else {
-					neighbourToShowNeighbours.clear();
-				}
-
-				for (std::set<Coord2D>::const_iterator cit = it->second.begin(); cit != it->second.end(); cit++) {
-					Coord2D thatCoord(cit->x, cit->y);
-
-					double xDistance = static_cast<double>(thatCoord.x) - thisCoord.x;
-					double yDistance = static_cast<double>(thatCoord.y) - thisCoord.y;
-					double distance = std::sqrt(xDistance * xDistance + yDistance * yDistance);
-
-					printf("distances: %f, %f, %f\n", xDistance, yDistance, distance);
-					printf("neighbour distances to (%d/%d): %g\n", cit->x, cit->y, distance);
-				}
-			}
 		}
 	}
 }
@@ -502,13 +477,7 @@ void Drawing::DrawingImpl::paint()
 	     it != neighbourToShowNeighbours.end();
 	     it++) {
 		if (!it->second) {
-			unsigned char c1, c2, c3;
-
-			c1 = rand() % 128;
-			c2 = rand() % 128;
-			c3 = rand() % 128;
-
-			glColor3b(c1, c2, c3);
+			glColor3b(0, 127, 0);
 		} else {
 			glColor3b(127, 0 ,0);
 			glLineWidth(2.0f);
@@ -643,6 +612,40 @@ bool Drawing::DrawingImpl::getCoordFromMouseClick(int x, int y, Coord2D &coord)
 	}
 
 	return false;
+}
+
+void Drawing::DrawingImpl::showNeighbours(Coord2D const &coord)
+{
+	NeighboursMap neighbours = room->getNeighbours();
+
+	for (NeighboursMap::const_iterator it = neighbours.begin(); it != neighbours.end(); it++) {
+		Coord2D thisCoord(it->first.x, it->first.y);
+
+		if (coord == thisCoord) {
+			neighbourToShow = coord;
+			if (neighbourToShowNeighbours.empty()) {
+				for (std::set<Coord2D>::const_iterator sit = it->second.begin(); sit != it->second.end(); sit++) {
+					Edge edge(neighbourToShow, *sit);
+					// store if this edge intersects any polygon boundary edge
+					neighbourToShowNeighbours[*sit] = room->intersectsEdges(edge);
+					printf("intersects %d\n", neighbourToShowNeighbours[*sit]);
+				}
+			} else {
+				neighbourToShowNeighbours.clear();
+			}
+
+			for (std::set<Coord2D>::const_iterator cit = it->second.begin(); cit != it->second.end(); cit++) {
+				Coord2D thatCoord(cit->x, cit->y);
+
+				double xDistance = static_cast<double>(thatCoord.x) - thisCoord.x;
+				double yDistance = static_cast<double>(thatCoord.y) - thisCoord.y;
+				double distance = std::sqrt(xDistance * xDistance + yDistance * yDistance);
+
+				printf("distances: %f, %f, %f\n", xDistance, yDistance, distance);
+				printf("neighbour distances to (%d/%d): %g\n", cit->x, cit->y, distance);
+			}
+		}
+	}
 }
 
 Drawing::Drawing()

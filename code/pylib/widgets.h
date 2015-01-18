@@ -55,6 +55,7 @@ private:
 	QCheckBox *boxShowRoomTri_;
 	QCheckBox *boxShowWay_;
 	QCheckBox *boxShowPath_;
+	QCheckBox *boxShowNeighbours_;
 	QTextEdit *infoTextEdit_;
 
 	friend class CheckBoxEventFilter;

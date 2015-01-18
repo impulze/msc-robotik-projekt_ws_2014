@@ -88,6 +88,7 @@ CentralWidget::CentralWidget(QWidget *parent)
 	boxShowRoomTri_ = new QCheckBox(tr("Show room triangulation"), this);
 	boxShowWay_ = new QCheckBox(tr("Show waypoints"), this);
 	boxShowPath_ = new QCheckBox(tr("Show path"), this);
+	boxShowNeighbours_ = new QCheckBox(tr("Show neighbours"), this);
 
 	connect(boxAdd_, SIGNAL(stateChanged(int)), this, SLOT(checkBoxChanged(int)));
 	connect(boxDel_, SIGNAL(stateChanged(int)), this, SLOT(checkBoxChanged(int)));
@@ -97,6 +98,7 @@ CentralWidget::CentralWidget(QWidget *parent)
 	connect(boxShowRoomTri_, SIGNAL(stateChanged(int)), this, SLOT(checkBoxChanged(int)));
 	connect(boxShowWay_, SIGNAL(stateChanged(int)), this, SLOT(checkBoxChanged(int)));
 	connect(boxShowPath_, SIGNAL(stateChanged(int)), this, SLOT(checkBoxChanged(int)));
+	connect(boxShowNeighbours_, SIGNAL(stateChanged(int)), this, SLOT(checkBoxChanged(int)));
 
 	QVBoxLayout *sideLayout = new QVBoxLayout;
 	QLayout *amountLayout = new QHBoxLayout;
@@ -115,6 +117,7 @@ CentralWidget::CentralWidget(QWidget *parent)
 	sideLayout->addWidget(boxShowRoomTri_);
 	sideLayout->addWidget(boxShowWay_);
 	sideLayout->addWidget(boxShowPath_);
+	sideLayout->addWidget(boxShowNeighbours_);
 	QSpacerItem *spacer = new QSpacerItem(1, 1, QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
 	sideLayout->addItem(spacer);
 	sideLayout->addWidget(infoTextEdit_);
@@ -135,6 +138,7 @@ CentralWidget::CentralWidget(QWidget *parent)
 	boxShowRoomTri_->installEventFilter(filter);
 	boxShowWay_->installEventFilter(filter);
 	boxShowPath_->installEventFilter(filter);
+	boxShowNeighbours_->installEventFilter(filter);
 }
 
 void CentralWidget::checkBoxChanged(int state)
@@ -192,8 +196,10 @@ void CentralWidget::checkBoxChanged(int state)
 		option = Drawing::ShowRoomTriangulation;
 	} else if (sender == boxShowWay_) {
 		option = Drawing::ShowWaypoints;
-	} else {
+	} else if (sender == boxShowPath_) {
 		option = Drawing::ShowPath;
+	} else {
+		option = Drawing::ShowNeighbours;
 	}
 
 	drawing_->setOption(option, state == Qt::Checked);
@@ -234,6 +240,8 @@ bool CentralWidget::checkBoxEvent(QObject *object, QEvent *event)
 		showText = "Show the waypoints (including startpoint and endpoint).";
 	} else if (sender == boxShowPath_) {
 		showText = "Show the generated path (if possible) and collisions with red markers (if any).";
+	} else if (sender == boxShowNeighbours_) {
+		showText = "Show the neighbours of a waypoint (or startpoint and endpoint). Click on a point and green edges are reachable while red ones are not.";
 	}
 
 	if (!showText.empty()) {

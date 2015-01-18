@@ -23,7 +23,8 @@ public:
 		ShowTriangulation,
 		ShowRoomTriangulation,
 		ShowWaypoints,
-		ShowPath
+		ShowPath,
+		ShowNeighbours
 	};
 
 	enum MouseButton
