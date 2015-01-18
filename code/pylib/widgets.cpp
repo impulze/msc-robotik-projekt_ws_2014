@@ -130,7 +130,6 @@ CentralWidget::CentralWidget(QWidget *parent)
 
 	CheckBoxEventFilter *filter = new CheckBoxEventFilter(this);
 	boxAdd_->installEventFilter(filter);
-	printf("box add %p\n", boxAdd_);
 	boxDel_->installEventFilter(filter);
 	boxStart_->installEventFilter(filter);
 	boxEnd_->installEventFilter(filter);
