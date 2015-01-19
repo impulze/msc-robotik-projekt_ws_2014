@@ -267,15 +267,15 @@ std::vector<Coord2D> dijkstra(NeighboursMap const &neighbours,
 	return generatedPath;
 }
 
-Coord2D const &aStarLowestFScore(std::set<Coord2D> const &searchSet, std::map<Coord2D, unsigned int> const &fScore)
+Coord2D const &aStarLowestFScore(std::set<Coord2D> const &searchSet, std::map<Coord2D, float> const &fScore)
 {
-	unsigned int lowest = 0;
+	float lowest = 0;
 	std::set<Coord2D>::const_iterator lowestMemberIt;
 
 	assert(searchSet.begin() != searchSet.end());
 
 	for (std::set<Coord2D>::const_iterator searchIt = searchSet.begin(); searchIt != searchSet.end(); searchIt++) {
-		std::map<Coord2D, unsigned int>::const_iterator candidate = fScore.find(*searchIt);
+		std::map<Coord2D, float>::const_iterator candidate = fScore.find(*searchIt);
 
 		assert(candidate != fScore.end());
 
@@ -293,21 +293,38 @@ Coord2D const &aStarLowestFScore(std::set<Coord2D> const &searchSet, std::map<Co
 	return *lowestMemberIt;
 }
 
-unsigned int aStarHeuristicCostEstimate(Coord2D const &start, Coord2D const &end)
+float aStarHeuristicCostEstimate(Coord2D const &start, Coord2D const &end)
 {
-	return 0;
+	unsigned int xDist = std::max(start.x, end.x) - std::min(start.x, end.x);
+	unsigned int yDist = std::max(start.y, end.y) - std::min(start.y, end.y);
+
+	return std::sqrt(xDist * xDist + yDist * yDist);
 }
 
-std::vector<Coord2D> aStarReconstructPath(std::map<Coord2D, Coord2D> const &cameFrom, Coord2D const &end)
+std::vector<Coord2D> aStarReconstructPath(std::map<Coord2D, Coord2D> &cameFrom, Coord2D const &end)
 {
+	Coord2D current = end;
 	std::vector<Coord2D> path;
+
+	path.push_back(current);
+
+	std::map<Coord2D, Coord2D>::iterator it;
+
+	for (it = cameFrom.find(current); it != cameFrom.end(); it = cameFrom.find(current)) {
+		current = it->second;
+		cameFrom.erase(it);
+		path.push_back(current);
+	}
 
 	return path;
 }
 
-unsigned int aStarDistanceBetween(Coord2D const &start, Coord2D const &end)
+float aStarDistanceBetween(Coord2D const &start, Coord2D const &end)
 {
-	return 0;
+	unsigned int xDist = std::max(start.x, end.x) - std::min(start.x, end.x);
+	unsigned int yDist = std::max(start.y, end.y) - std::min(start.y, end.y);
+
+	return std::sqrt(xDist * xDist + yDist * yDist);
 }
 
 std::vector<Coord2D> astar(NeighboursMap const &neighbours,
@@ -319,8 +336,8 @@ std::vector<Coord2D> astar(NeighboursMap const &neighbours,
 	std::set<Coord2D> openSet;
 	std::map<Coord2D, Coord2D> cameFrom;
 
-	std::map<Coord2D, unsigned int> gScore;
-	std::map<Coord2D, unsigned int> fScore;
+	std::map<Coord2D, float> gScore;
+	std::map<Coord2D, float> fScore;
 
 	openSet.insert(startpoint);
 
@@ -350,7 +367,7 @@ std::vector<Coord2D> astar(NeighboursMap const &neighbours,
 				continue;
 			}
 
-			unsigned int tentativeGScore = gScore[current] + aStarDistanceBetween(current, neighbour);
+			float tentativeGScore = gScore[current] + aStarDistanceBetween(current, neighbour);
 
 			if (openSet.find(neighbour) == openSet.end() || tentativeGScore < gScore[neighbour]) {
 				cameFrom[neighbour] = current;
