@@ -7,6 +7,7 @@
 #include <stdexcept>
 
 Image::Image(std::string const &filename)
+	: filename_(filename)
 {
 	ilInit();
 	checkILError();
@@ -95,4 +96,9 @@ std::vector<unsigned char> const &Image::data() const
 Image::ImageType Image::type() const
 {
 	return type_;
+}
+
+std::string const &Image::filename() const
+{
+	return filename_;
 }

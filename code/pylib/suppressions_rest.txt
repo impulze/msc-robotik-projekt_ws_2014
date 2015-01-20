@@ -1,0 +1,115 @@
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   fun:strdup
+   obj:*
+   obj:/lib/x86_64-linux-gnu/libexpat.so.1.6.0
+   obj:/lib/x86_64-linux-gnu/libexpat.so.1.6.0
+   obj:/lib/x86_64-linux-gnu/libexpat.so.1.6.0
+   obj:/lib/x86_64-linux-gnu/libexpat.so.1.6.0
+   fun:XML_ParseBuffer
+   obj:*
+   obj:*
+   obj:*
+   obj:/lib/x86_64-linux-gnu/libexpat.so.1.6.0
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   obj:*
+   obj:*
+   obj:*
+   obj:/lib/x86_64-linux-gnu/libexpat.so.1.6.0
+   obj:/lib/x86_64-linux-gnu/libexpat.so.1.6.0
+   obj:/lib/x86_64-linux-gnu/libexpat.so.1.6.0
+   obj:/lib/x86_64-linux-gnu/libexpat.so.1.6.0
+   fun:XML_ParseBuffer
+   obj:*
+   obj:*
+   obj:*
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   obj:/usr/lib/x86_64-linux-gnu/mesa/libGL.so.1.2.0
+   obj:/usr/lib/x86_64-linux-gnu/mesa/libGL.so.1.2.0
+   fun:glXGetFBConfigs
+   fun:glXChooseFBConfig
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   fun:_ZN14QWindowPrivate6createEb
+   fun:_ZN14QWidgetPrivate10create_sysEybb
+   fun:_ZN7QWidget6createEybb
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   obj:/usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0
+   obj:/usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0
+   fun:xcb_wait_for_event
+   obj:*
+   obj:/opt/qt54/lib/libQt5Core.so.5.4.0
+   fun:start_thread
+   fun:clone
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:realloc
+   obj:/usr/lib/x86_64-linux-gnu/libX11.so.6.3.0
+   obj:/usr/lib/x86_64-linux-gnu/libX11.so.6.3.0
+   obj:/usr/lib/x86_64-linux-gnu/libX11.so.6.3.0
+   fun:_XlcCreateLC
+   fun:_XlcUtf8Loader
+   fun:_XOpenLC
+   fun:_XrmInitParseInfo
+   obj:/usr/lib/x86_64-linux-gnu/libX11.so.6.3.0
+   fun:XrmGetStringDatabase
+   obj:/usr/lib/x86_64-linux-gnu/libX11.so.6.3.0
+   fun:XGetDefault
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:/lib/x86_64-linux-gnu/libexpat.so.1.6.0
+   obj:/lib/x86_64-linux-gnu/libexpat.so.1.6.0
+   obj:/lib/x86_64-linux-gnu/libexpat.so.1.6.0
+   obj:/lib/x86_64-linux-gnu/libexpat.so.1.6.0
+   fun:XML_ParseBuffer
+   obj:*
+   obj:*
+}

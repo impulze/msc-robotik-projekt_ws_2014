@@ -7,6 +7,8 @@ class Drawing;
 class DrawWidget;
 class QCheckBox;
 class QTextEdit;
+class QXmlStreamReader;
+class QXmlStreamWriter;
 
 class MainWindow
 	: public QMainWindow
@@ -19,10 +21,6 @@ public:
 private:
 	MainWindow(MainWindow const &other);
 	MainWindow &operator=(MainWindow const &other);
-
-private Q_SLOTS:
-	void wantsRoomLoaded();
-	void wantsRoomSaved();
 };
 
 class CentralWidget
@@ -32,12 +30,19 @@ class CentralWidget
 
 public:
 	CentralWidget(QWidget *parent = 0);
+	~CentralWidget();
+
+	bool loadProject(QXmlStreamReader *reader);
+	bool saveProject(QXmlStreamWriter *writer);
 
 private:
 	CentralWidget(CentralWidget const &other);
 	CentralWidget &operator=(CentralWidget const &other);
 
 private Q_SLOTS:
+	void wantsRoomLoaded();
+	void wantsProjectLoaded();
+	void wantsProjectSaved();
 	void checkBoxChanged(int state);
 	void amountOfNodesChanged();
 

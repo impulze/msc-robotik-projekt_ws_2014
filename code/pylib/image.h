@@ -18,12 +18,14 @@ public:
 	unsigned int height() const;
 	std::vector<unsigned char> const &data() const;
 	ImageType type() const;
+	std::string const &filename() const;
 
 private:
 	unsigned int width_;
 	unsigned int height_;
 	std::vector<unsigned char> data_;
 	ImageType type_;
+	std::string const filename_;
 };
 
 #endif // ROB_IMAGE_H_INCLUDED

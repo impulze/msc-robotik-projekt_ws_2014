@@ -2,6 +2,7 @@
 #include "opengldrawwidget.h"
 
 #include <QTimer>
+#include <stdio.h>
 
 OpenGLDrawWidget::OpenGLDrawWidget(Drawing *drawing, QWidget *parent)
 	: QOpenGLWidget(parent),
@@ -9,7 +10,7 @@ OpenGLDrawWidget::OpenGLDrawWidget(Drawing *drawing, QWidget *parent)
 {
 	setAutoFillBackground(false);
 
-	QTimer *timer = new QTimer;
+	QTimer *timer = new QTimer(this);
 	connect(timer, SIGNAL(timeout()), this, SLOT(update()));
 	timer->start(0);
 }

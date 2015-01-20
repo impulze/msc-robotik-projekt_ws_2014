@@ -13,6 +13,7 @@ class DelaunayTriangulation
 {
 public:
 	DelaunayTriangulation();
+	~DelaunayTriangulation();
 
 	NeighboursMap getNeighbours() const;
 	std::vector<Triangle> getTriangulation() const;
@@ -35,6 +36,7 @@ class ConstrainedDelaunayTriangulation
 {
 public:
 	ConstrainedDelaunayTriangulation();
+	~ConstrainedDelaunayTriangulation();
 
 	NeighboursMap getNeighbours() const;
 	std::vector<Triangle> getTriangulation() const;

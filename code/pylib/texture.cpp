@@ -6,6 +6,8 @@
 
 #include <stdexcept>
 
+#include <stdio.h>
+
 class Texture::TextureImpl
 {
 public:
@@ -74,6 +76,11 @@ void Texture::TextureImpl::bind()
 Texture::Texture(Image const &image)
 	: p(new TextureImpl(image))
 {
+}
+
+Texture::~Texture()
+{
+	delete p;
 }
 
 unsigned int Texture::width() const

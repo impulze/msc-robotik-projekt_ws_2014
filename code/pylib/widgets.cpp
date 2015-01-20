@@ -2,9 +2,12 @@
 #include "drawwidget.h"
 #include "widgets.h"
 
+#include <QtCore/QXmlStreamReader>
+#include <QtCore/QXmlStreamWriter>
 #include <QtGui/QIntValidator>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QCheckBox>
+#include <QtWidgets/QDialogButtonBox>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QLayout>
@@ -20,58 +23,32 @@
 MainWindow::MainWindow(QWidget *parent)
 	: QMainWindow(parent)
 {
-	QMenu *menuRoom = menuBar()->addMenu(tr("&Room"));
-	QAction *actRoomNew = menuRoom->addAction(tr("&New"));
-	static_cast<void>(actRoomNew);
-	QAction *actRoomLoad = menuRoom->addAction(tr("&Load"));
-	connect(actRoomLoad, SIGNAL(triggered()), this, SLOT(wantsRoomLoaded()));
-	QAction *actRoomSave = menuRoom->addAction(tr("&Save"));
-	connect(actRoomSave, SIGNAL(triggered()), this, SLOT(wantsRoomSaved()));
+	CentralWidget *central = new CentralWidget(this);
 
-	QMenu *menuRobot = menuBar()->addMenu(tr("R&obot"));
-	QAction *actRobotSimulate = menuRobot->addAction(tr("&Simulate"));
-	static_cast<void>(actRobotSimulate);
-	QAction *actRobotExport = menuRobot->addAction(tr("&Export Simulation"));
-	static_cast<void>(actRobotExport);
+	QMenu *menuRoom = menuBar()->addMenu(tr("&Project"));
+	QAction *actRoomLoad = menuRoom->addAction(tr("&Load room"));
+	connect(actRoomLoad, SIGNAL(triggered()), central, SLOT(wantsRoomLoaded()));
+	QAction *actProjectLoad = menuRoom->addAction(tr("&Load project"));
+	connect(actProjectLoad, SIGNAL(triggered()), central, SLOT(wantsProjectLoaded()));
+	QAction *actProjectSave = menuRoom->addAction(tr("&Save project"));
+	connect(actProjectSave, SIGNAL(triggered()), central, SLOT(wantsProjectSaved()));
 
 	QAction *actQuit = menuBar()->addAction(tr("&Quit"));
 	connect(actQuit, SIGNAL(triggered()), this, SLOT(close()));
 
-	setWindowTitle("Simulation");
+	setWindowTitle("Pathfinding in 2D rooms");
 	layout()->setContentsMargins(0, 0, 0, 0);
 
-	setCentralWidget(new CentralWidget(this));
+	setCentralWidget(central);
 
 	resize(1024, 768);
 }
 
-void MainWindow::wantsRoomLoaded()
-{
-	QString filename = QFileDialog::getOpenFileName(this, tr("Open room image"), "", "Images (*.png)");
-
-	if (filename.length() == 0) {
-		return;
-	}
-
-	std::printf("Want to open: %s\n", filename.toStdString().c_str());
-}
-
-void MainWindow::wantsRoomSaved()
-{
-	QString filename = QFileDialog::getSaveFileName(this, tr("Save room image"), "", "Images (*.png)");
-
-	if (filename.length() == 0) {
-		return;
-	}
-
-	std::printf("Want to save: %s\n", filename.toStdString().c_str());
-}
-
 CentralWidget::CentralWidget(QWidget *parent)
-	: QWidget(parent)
+	: QWidget(parent),
+	  drawing_(0),
+	  drawWidget_(0)
 {
-	drawing_ = new Drawing;
-	drawWidget_ = new DrawWidget(drawing_, this);
 	infoTextEdit_ = new QTextEdit(this);
 	infoTextEdit_->setDisabled(true);
 
@@ -123,7 +100,6 @@ CentralWidget::CentralWidget(QWidget *parent)
 	sideLayout->addWidget(infoTextEdit_);
 	QHBoxLayout *mainLayout = new QHBoxLayout(this);
 	mainLayout->addLayout(sideLayout);
-	mainLayout->addWidget(drawWidget_, 1);
 
 	boxShowWay_->setCheckState(Qt::Checked);
 	boxShowPath_->setCheckState(Qt::Checked);
@@ -140,8 +116,184 @@ CentralWidget::CentralWidget(QWidget *parent)
 	boxShowNeighbours_->installEventFilter(filter);
 }
 
+CentralWidget::~CentralWidget()
+{
+	delete drawWidget_;
+	delete drawing_;
+}
+
+void CentralWidget::wantsRoomLoaded()
+{
+	QString filename = QFileDialog::getOpenFileName(this, tr("Open room image"), "", "Images (*.png)");
+
+	if (filename.length() == 0) {
+		return;
+	}
+
+	if (drawWidget_) {
+		QWidget *widget = layout()->takeAt(layout()->indexOf(drawWidget_))->widget();
+		DrawWidget *drawWidget = static_cast<DrawWidget *>(widget);
+		layout()->removeWidget(drawWidget);
+	}
+
+	delete drawWidget_;
+	drawWidget_ = 0;
+
+	delete drawing_;
+	drawing_ = 0;
+
+	drawing_ = new Drawing;
+	drawing_->fromImage(filename.toStdString().c_str());
+	drawWidget_ = new DrawWidget(drawing_, this);
+	static_cast<QHBoxLayout *>(layout())->addWidget(drawWidget_, 1);
+}
+
+void CentralWidget::wantsProjectLoaded()
+{
+	QString filename = QFileDialog::getOpenFileName(this, tr("Load project"), "", "XML files (*.xml)");
+
+	if (filename.length() == 0) {
+		return;
+	}
+
+	if (drawWidget_) {
+		QWidget *widget = layout()->takeAt(layout()->indexOf(drawWidget_))->widget();
+		DrawWidget *drawWidget = static_cast<DrawWidget *>(widget);
+
+		layout()->removeWidget(drawWidget);
+	}
+
+	delete drawWidget_;
+	drawWidget_ = 0;
+
+	delete drawing_;
+	drawing_ = 0;
+
+	QFile loadFile(filename);
+	loadFile.open(QIODevice::ReadOnly | QIODevice::Text);
+
+	QXmlStreamReader reader(&loadFile);
+
+	drawing_ = new Drawing;
+
+	QString errorString;
+
+	if (reader.readNextStartElement()) {
+		QString name = reader.name().toString();
+
+		if (name != "project") {
+			errorString = "Expected <project> where <" + name + "> is.";
+		}
+	} else {
+		errorString = reader.errorString();
+	}
+
+	if (errorString.length() == 0) {
+		reader.readNextStartElement();
+
+		if (!drawing_->loadProject(&reader)) {
+			errorString = "The drawing element could not be read properly.";
+		}
+	}
+
+	if (errorString.length() == 0) {
+		reader.readNext();
+
+		if (reader.isCharacters()) {
+			reader.readNext();
+		}
+
+		if (!reader.isEndElement()) {
+			errorString = "Expected the end element for <project> where " + reader.tokenString() + " is.";
+		} else {
+			QString name = reader.name().toString();
+
+			if (name != "project") {
+				errorString = "Expected </project> where <" + name + "> is.";
+			}
+		}
+	}
+
+	if (errorString.length() != 0) {
+		QDialog *errorDialog(new QDialog(this));
+		errorDialog->setWindowTitle("XML errors while reading XML project");
+		QVBoxLayout *layout = new QVBoxLayout(errorDialog);
+		QTextEdit *textEdit = new QTextEdit(this);
+
+		textEdit->insertPlainText("The following error occured:\n");
+		textEdit->insertPlainText(errorString);
+
+		QDialogButtonBox *buttons = new QDialogButtonBox(QDialogButtonBox::Discard, Qt::Horizontal, errorDialog);
+
+		layout->addWidget(textEdit);
+		layout->addWidget(buttons);
+
+		errorDialog->exec();
+		delete errorDialog;
+
+		delete drawing_;
+		drawing_ = 0;
+	} else {
+		drawWidget_ = new DrawWidget(drawing_, this);
+		static_cast<QHBoxLayout *>(layout())->addWidget(drawWidget_, 1);
+	}
+}
+
+void CentralWidget::wantsProjectSaved()
+{
+	QString filename = QFileDialog::getSaveFileName(this, tr("Save project"), "", "XML files (*.xml)");
+
+	if (filename.length() == 0) {
+		return;
+	}
+
+	std::string error;
+
+	if (drawing_) {
+		QFile saveFile(filename);
+		saveFile.open(QIODevice::WriteOnly | QIODevice::Text);
+
+		QXmlStreamWriter writer(&saveFile);
+		writer.writeStartDocument();
+		writer.setAutoFormatting(true);
+		writer.writeStartElement("", "project");
+
+		if (!drawing_->saveProject(&writer)) {
+			error = "The XML stream writer could not create output.";
+		}
+
+		writer.writeEndElement();
+		writer.writeEndDocument();
+	} else {
+		error = "No room image loaded yet.";
+	}
+
+	if (!error.empty()) {
+		QDialog *errorDialog(new QDialog(this));
+		errorDialog->setWindowTitle("XML errors while writing XML project");
+		QVBoxLayout *layout = new QVBoxLayout(errorDialog);
+		QTextEdit *textEdit = new QTextEdit(this);
+
+		textEdit->insertPlainText("The following error occured:\n");
+		textEdit->insertPlainText(QString::fromStdString(error));
+
+		QDialogButtonBox *buttons = new QDialogButtonBox(QDialogButtonBox::Cancel, Qt::Horizontal, errorDialog);
+
+		layout->addWidget(textEdit);
+		layout->addWidget(buttons);
+
+		errorDialog->exec();
+		delete errorDialog;
+	}
+}
+
+
 void CentralWidget::checkBoxChanged(int state)
 {
+	if (!drawing_) {
+		return;
+	}
+
 	QObject *sender = QObject::sender();
 
 	if (sender == boxAdd_ || sender == boxDel_ ||
@@ -206,10 +358,12 @@ void CentralWidget::checkBoxChanged(int state)
 
 void CentralWidget::amountOfNodesChanged()
 {
+	if (!drawing_) {
+		return;
+	}
+
 	QLineEdit *lineEdit = static_cast<QLineEdit *>(sender());
 	int num = lineEdit->text().toInt();
-
-	std::printf("The amount of nodes changed to: '%d'\n", num);
 
 	drawing_->setNodes(num);
 }
@@ -251,7 +405,8 @@ bool CentralWidget::checkBoxEvent(QObject *object, QEvent *event)
 }
 
 CheckBoxEventFilter::CheckBoxEventFilter(CentralWidget *central)
-	: central_(central)
+	: QObject(central),
+	  central_(central)
 {
 }
 

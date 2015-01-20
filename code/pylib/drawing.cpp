@@ -14,15 +14,18 @@
 
 #include <cassert>
 #include <cmath>
-#include <cstdlib>
 #include <ctime>
 #include <limits>
 #include <set>
 #include <stdexcept>
 #include <vector>
 
+#include <QtCore/QXmlStreamReader>
+#include <QtCore/QXmlStreamWriter>
+
 #if MEASURE
 #include <sys/time.h>
+#include <cstdio>
 #endif
 
 #define ROBOT_DIAMETER 5
@@ -32,7 +35,6 @@ namespace
 {
 
 void throwErrorFromGLError();
-long randomAtMost(long max);
 
 void throwErrorFromGLError()
 {
@@ -42,26 +44,6 @@ void throwErrorFromGLError()
 		const char *string = reinterpret_cast<const char *>(gluErrorString(glError));
 		throw std::runtime_error(string);
 	}
-}
-
-long randomAtMost(long max)
-{
-	unsigned long num_bins = static_cast<unsigned long>(max) + 1;
-	unsigned long num_rand = static_cast<unsigned long>(RAND_MAX) + 1;
-	unsigned long bin_size = num_rand / num_bins;
-	unsigned long defect = num_rand % num_bins;
-
-	int x;
-
-	while (true) {
-		x = std::rand();
-
-		if (num_rand - defect > static_cast<unsigned long>(x)) {
-			break;
-		}
-	}
-
-	return x / bin_size;
 }
 
 } // end of private namespace
@@ -92,6 +74,9 @@ public:
 	void drawCross(int x, int y);
 	bool getCoordFromMouseClick(int x, int y, Coord2D &coord);
 	void showNeighbours(Coord2D const &coord);
+
+	bool loadProject(QXmlStreamReader *reader);
+	bool saveProject(QXmlStreamWriter *writer) const;
 
 	Drawing::WaypointModification waypointModification;
 	GLint viewport[4];
@@ -130,21 +115,12 @@ Drawing::DrawingImpl::~DrawingImpl()
 
 void Drawing::DrawingImpl::fromImage(const char *name)
 {
-	freeTexture();
-
 	room = new Room(name, ROBOT_DIAMETER);
 
 	if (room->image().width() > static_cast<unsigned int>(std::numeric_limits<int>::max()) ||
 	    room->image().height() > static_cast<unsigned int>(std::numeric_limits<int>::min())) {
 		delete room;
 		throw std::runtime_error("OpenGL cannot draw this texture.");
-	}
-
-	try {
-		texture = new Texture(room->image());
-	} catch (...) {
-		delete texture;
-		throw;
 	}
 
 	roomTriangulation = room->getRoomTriangulation();
@@ -154,6 +130,11 @@ void Drawing::DrawingImpl::updateRoom()
 {
 	triangulation = room->getTriangulation();
 	path = room->generatePath();
+
+	if (path.begin()->x > path.rbegin()->x) {
+		std::reverse(path.begin(), path.end());
+	}
+
 	pathPoints = catmullRom(path, 50);
 
 	pathCollisions.clear();
@@ -168,16 +149,7 @@ void Drawing::DrawingImpl::updateRoom()
 void Drawing::DrawingImpl::setNodes(int amount)
 {
 	room->clearWaypoints();
-
-	for (int i = 0; i < amount; i++) {
-		int randX = randomAtMost(texture->width() - 1);
-		int randY = randomAtMost(texture->height() - 1);
-
-		if (!room->insertWaypoint(Coord2D(randX, randY))) {
-			i--;
-			continue;
-		}
-	}
+	room->setNodes(amount);
 
 	updateRoom();
 }
@@ -269,7 +241,6 @@ void Drawing::DrawingImpl::mouseClick(int x, int y, Drawing::MouseButton button)
 
 void Drawing::DrawingImpl::initialize()
 {
-	fromImage("/home/impulze/Diagramm3.png");
 	glEnable(GL_DEPTH_TEST);
 
 	GLdouble vertices[(300 + 1) * 2];
@@ -320,39 +291,7 @@ void Drawing::DrawingImpl::initialize()
 		glDeleteBuffers(2, &crossVBO);
 	}
 
-	while (true) {
-		int randX = randomAtMost(texture->width() - 1);
-		int randY = randomAtMost(texture->height() - 1);
-
-		if (room->setStartpoint(Coord2D(randX, randY))) {
-			break;
-		}
-	}
-
-	while (true) {
-		int randX = randomAtMost(texture->width() - 1);
-		int randY = randomAtMost(texture->height() - 1);
-
-		if (room->setEndpoint(Coord2D(randX, randY))) {
-			break;
-		}
-	}
-
-// check if triangles go through walls
-#if 0
-	room->insertWaypoint(Coord2D(352, 277));
-	room->insertWaypoint(Coord2D(401, 271));
-	room->setStartpoint(Coord2D(410, 255));
-	//room->setStartpoint(Coord2D(557, 317));
-	room->setEndpoint(Coord2D(330, 287));
-#endif
-
-// check if path goes through walls
-#if 1
-	room->setStartpoint(Coord2D(543, 62));
-	room->setEndpoint(Coord2D(531, 122));
-	room->insertWaypoint(Coord2D(610, 100));
-#endif
+	texture = new Texture(room->image());
 
 	updateRoom();
 }
@@ -530,7 +469,7 @@ void Drawing::DrawingImpl::paint()
 #if MEASURE
 	struct timeval sec; gettimeofday(&sec, NULL);
 	struct timeval res; timersub(&sec, &fir, &res);
-	printf("rendering: %lu sec %lu usec\n", res.tv_sec, res.tv_usec);
+	std::printf("rendering: %lu sec %lu usec\n", res.tv_sec, res.tv_usec);
 #endif
 }
 
@@ -556,11 +495,7 @@ bool Drawing::DrawingImpl::delNode(int x, int y)
 	Coord2D coord;
 
 	if (getCoordFromMouseClick(x, y, coord)) {
-		bool result = room->removeWaypoint(coord);
-
-		assert(result);
-
-		return result;
+		return room->removeWaypoint(coord);
 	}
 
 	return false;
@@ -628,7 +563,6 @@ void Drawing::DrawingImpl::showNeighbours(Coord2D const &coord)
 					Edge edge(neighbourToShow, *sit);
 					// store if this edge intersects any polygon boundary edge
 					neighbourToShowNeighbours[*sit] = room->intersectsEdges(edge);
-					printf("intersects %d\n", neighbourToShowNeighbours[*sit]);
 				}
 			} else {
 				neighbourToShowNeighbours.clear();
@@ -640,12 +574,108 @@ void Drawing::DrawingImpl::showNeighbours(Coord2D const &coord)
 				double xDistance = static_cast<double>(thatCoord.x) - thisCoord.x;
 				double yDistance = static_cast<double>(thatCoord.y) - thisCoord.y;
 				double distance = std::sqrt(xDistance * xDistance + yDistance * yDistance);
-
-				printf("distances: %f, %f, %f\n", xDistance, yDistance, distance);
-				printf("neighbour distances to (%d/%d): %g\n", cit->x, cit->y, distance);
 			}
 		}
 	}
+}
+
+bool Drawing::DrawingImpl::loadProject(QXmlStreamReader *reader)
+{
+	if (!reader->isStartElement()) {
+		return false;
+	}
+
+	if (reader->name().toString() != "drawing") {
+		return false;
+	}
+
+	reader->readNextStartElement();
+
+	if (reader->name().toString() != "image") {
+		return false;
+	}
+
+	reader->readNext();
+	fromImage(reader->text().toString().toStdString().c_str());
+	reader->readNext();
+
+	if (!reader->isEndElement() || reader->name().toString() != "image") {
+		return false;
+	}
+
+	reader->readNextStartElement();
+
+	std::map<int, bool> showMap;
+
+	while (true) {
+		if (reader->isStartElement()) {
+			QString name = reader->name().toString();
+			QXmlStreamAttributes attributes = reader->attributes();
+			QString showValue = attributes.value("show").toString();
+			bool showValueInt = showValue.toInt();
+
+			if (name == "show_triangulation") {
+				showMap[ShowTriangulation] = showValueInt;
+			} else if (name == "show_room_triangulation") {
+				showMap[ShowRoomTriangulation] = showValueInt;
+			} else if (name == "show_waypoints") {
+				showMap[ShowWaypoints] = showValueInt;
+			} else if (name == "show_path") {
+				showMap[ShowPath] = showValueInt;
+			} else if (name == "show_neighbours") {
+				showMap[ShowNeighbours] = showValueInt;
+			}
+		} else if (reader->isEndElement() && reader->name().toString() == "drawing") {
+			reader->readNextStartElement();
+			bool result = room->loadProject(reader);
+
+			if (result) {
+				for (std::map<int, bool>::const_iterator i = showMap.begin(); i != showMap.end(); i++) {
+					show_[i->first] = i->second;
+				}
+			}
+
+			return result;
+		}
+
+		reader->readNext();
+
+		if (!reader->isEndElement()) {
+			return false;
+		}
+
+		reader->readNextStartElement();
+	}
+
+	return false;
+}
+
+bool Drawing::DrawingImpl::saveProject(QXmlStreamWriter *writer) const
+{
+	writer->writeStartElement("", "drawing");
+
+	writer->writeTextElement("", "image", QString::fromStdString(room->image().filename()));
+
+	writer->writeEmptyElement("", "show_triangulation");
+	writer->writeAttribute("show", QString::number(show_[ShowTriangulation]));
+
+	writer->writeEmptyElement("", "show_room_triangulation");
+	writer->writeAttribute("show", QString::number(show_[ShowRoomTriangulation]));
+
+	writer->writeEmptyElement("", "show_waypoints");
+	writer->writeAttribute("show", QString::number(show_[ShowWaypoints]));
+
+	writer->writeEmptyElement("", "show_path");
+	writer->writeAttribute("show", QString::number(show_[ShowPath]));
+
+	writer->writeEmptyElement("", "show_neighbours");
+	writer->writeAttribute("show", QString::number(show_[ShowNeighbours]));
+
+	writer->writeEndElement();
+
+	room->saveProject(writer);
+
+	return !writer->hasError();
 }
 
 Drawing::Drawing()
@@ -653,16 +683,14 @@ Drawing::Drawing()
 {
 }
 
+Drawing::~Drawing()
+{
+	delete p;
+}
+
 void Drawing::fromImage(const char *name)
 {
 	p->fromImage(name);
-}
-
-void Drawing::toImage(const char *name)
-{
-	static_cast<void>(name);
-
-	return;
 }
 
 void Drawing::setNodes(int amount)
@@ -698,4 +726,14 @@ void Drawing::paint()
 void Drawing::resize(int width, int height)
 {
 	p->resize(width, height);
+}
+
+bool Drawing::loadProject(QXmlStreamReader *reader)
+{
+	return p->loadProject(reader);
+}
+
+bool Drawing::saveProject(QXmlStreamWriter *writer) const
+{
+	return p->saveProject(writer);
 }

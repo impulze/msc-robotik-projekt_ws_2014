@@ -3,7 +3,7 @@ TARGET = gui
 QT += opengl widgets
 LIBS += -lIL -lILU -lGLU -lCGAL -lgmp -lboost_thread
 INCLUDEPATH += .
-QMAKE_CXXFLAGS += -frounding-math
+QMAKE_CXXFLAGS += -frounding-math -g3 -ggdb3
 
 # Input
 HEADERS += algo.h \

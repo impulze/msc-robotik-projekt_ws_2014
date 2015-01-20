@@ -65,9 +65,9 @@ Coord2DTemplate<float> catmullRomFirst(float t, Coord2D const &c1, Coord2D const
 		{ 2, 3, -4, 1 }
 	};
 
-	Coord2D orientation(1, 1);
+	Coord2D orientationPoint = c1;
 
-	return catmullRomImpl(matrix, t, orientation, c1, c2, c3);
+	return catmullRomImpl(matrix, t, orientationPoint, c1, c2, c3);
 }
 
 Coord2DTemplate<float> catmullRomMiddle(float t, Coord2D const &c1, Coord2D const &c2, Coord2D const &c3, Coord2D const &c4)
@@ -93,9 +93,9 @@ Coord2DTemplate<float> catmullRomLast(float t, Coord2D const &c1, Coord2D const 
 		{ -1, 4, -3, 2 }
 	};
 
-	Coord2D orientation(1, 1);
+	Coord2D orientationPoint = c3;
 
-	return catmullRomImpl(matrix, t, c1, c2, c3, orientation);
+	return catmullRomImpl(matrix, t, c1, c2, c3, orientationPoint);
 }
 
 }
@@ -111,11 +111,34 @@ std::vector< Coord2DTemplate<float> > catmullRom(std::vector<Coord2D> const &way
 		Coord2D c4;
 		Coord2DTemplate<float> result;
 
-		for (float t = 0.0f; t <= 1.0f; t += 1.0f / steps) {
+		for (float t = 0.0f; t <= 1.0f; t += 2.0f / steps) {
+			if (i == 0) {
+				c1 = waypoints[i];
+			} else {
+				c1 = waypoints[i - 1];
+			}
+
+			c2 = waypoints[i];
+			c3 = waypoints[i + 1];
+
+			if (i == waypoints.size() - 2) {
+				c4 = c3;
+			} else {
+				c4 = waypoints[i + 2];
+			}
+
+			result = catmullRomMiddle(t, c1, c2, c3, c4);
+#if 0
 			if (i == 0) {
 				c1 = waypoints[i];
 				c2 = waypoints[i + 1];
-				c3 = waypoints[i + 2];
+
+				if (i + 2 == waypoints.size()) {
+					c3 = c2;
+				} else {
+					c3 = waypoints[i + 2];
+				}
+
 				result = catmullRomFirst(t, c1, c2, c3);
 			} else if (i == waypoints.size() - 2) {
 				c1 = waypoints[i - 1];
@@ -126,9 +149,16 @@ std::vector< Coord2DTemplate<float> > catmullRom(std::vector<Coord2D> const &way
 				c1 = waypoints[i - 1];
 				c2 = waypoints[i];
 				c3 = waypoints[i + 1];
-				c4 = waypoints[i + 2];
+
+				if (i + 2 == waypoints.size()) {
+					c4 = c3;
+				} else {
+					c4 = waypoints[i + 2];
+				}
+
 				result = catmullRomMiddle(t, c1, c2, c3, c4);
 			}
+#endif
 
 			pathPoints.push_back(result);
 		}

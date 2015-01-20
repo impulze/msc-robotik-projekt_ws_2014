@@ -8,6 +8,37 @@
 #include <cassert>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
+
+#include <QtCore/QXmlStreamReader>
+#include <QtCore/QXmlStreamWriter>
+
+namespace
+{
+
+long randomAtMost(long max);
+
+long randomAtMost(long max)
+{
+	unsigned long num_bins = static_cast<unsigned long>(max) + 1;
+	unsigned long num_rand = static_cast<unsigned long>(RAND_MAX) + 1;
+	unsigned long bin_size = num_rand / num_bins;
+	unsigned long defect = num_rand % num_bins;
+
+	int x;
+
+	while (true) {
+		x = std::rand();
+
+		if (num_rand - defect > static_cast<unsigned long>(x)) {
+			break;
+		}
+	}
+
+	return x / bin_size;
+}
+
+} // end of private namespace
 
 struct Room::RoomImpl
 {
@@ -18,6 +49,7 @@ struct Room::RoomImpl
 		width = image->width();
 		height = image->height();
 		stride = image->type() == Image::IMAGE_TYPE_RGB ? 3 : 4;
+
 		this->distance = distance;
 
 		// this array below distinguishes between big room (first) and holes
@@ -96,6 +128,29 @@ struct Room::RoomImpl
 
 			insert(Coord2D(newX, newY));
 		}
+
+		while (true) {
+			int randX = randomAtMost(width - 1);
+			int randY = randomAtMost(height - 1);
+
+			if (setStartpoint(Coord2D(randX, randY))) {
+				break;
+			}
+		}
+
+		while (true) {
+			int randX = randomAtMost(width - 1);
+			int randY = randomAtMost(height - 1);
+
+			if (setEndpoint(Coord2D(randX, randY))) {
+				break;
+			}
+		}
+	}
+
+	~RoomImpl()
+	{
+		delete image;
 	}
 
 	RoomImage *image;
@@ -109,6 +164,7 @@ struct Room::RoomImpl
 	Coord2D startpoint;
 	Coord2D endpoint;
 	std::vector< std::vector<Edge> > edges;
+	std::set<Coord2D> waypoints;
 
 	bool insert(Coord2D const &coord)
 	{
@@ -128,6 +184,7 @@ struct Room::RoomImpl
 		}
 
 		triangulation.insert(coord);
+		waypoints.insert(coord);
 		assert(triangulation.pointIsVertex(coord));
 
 		return true;
@@ -146,6 +203,7 @@ struct Room::RoomImpl
 		}
 
 		triangulation.remove(coord);
+		waypoints.erase(coord);
 		assert(!triangulation.pointIsVertex(coord));
 
 		return true;
@@ -207,6 +265,19 @@ struct Room::RoomImpl
 		endpoint = coord;
 
 		return true;
+	}
+
+	void setNodes(int amount)
+	{
+		for (int i = 0; i < amount; i++) {
+			int randX = randomAtMost(width - 1);
+			int randY = randomAtMost(height - 1);
+
+			if (!insert(Coord2D(randX, randY))) {
+				i--;
+				continue;
+			}
+		}
 	}
 
 	bool pointInside(float x, float y) const
@@ -373,6 +444,72 @@ struct Room::RoomImpl
 		setStartpoint(newStartpoint);
 		setEndpoint(newEndpoint);
 	}
+
+	bool loadProject(QXmlStreamReader *reader)
+	{
+		if (!reader->isStartElement() || reader->name().toString() != "room") {
+			return false;
+		}
+
+		reader->readNextStartElement();
+
+		while (true) {
+			if (reader->isStartElement()) {
+				QString name = reader->name().toString();
+				QXmlStreamAttributes attributes = reader->attributes();
+				unsigned int xValue = attributes.value("x").toString().toUInt();
+				unsigned int yValue = attributes.value("y").toString().toUInt();
+
+				if (name == "startpoint") {
+					std::printf("setting startpoint to: %u/%u\n", xValue, yValue);
+					setStartpoint(Coord2D(xValue, yValue));
+				} else if (name == "endpoint") {
+					std::printf("setting endpoint to: %u/%u\n", xValue, yValue);
+					setEndpoint(Coord2D(xValue, yValue));
+				} else if (name == "waypoint") {
+					std::printf("insert waypoint: %u/%u\n", xValue, yValue);
+					insert(Coord2D(xValue, yValue));
+				}
+			} else if (reader->isEndElement() && reader->name().toString() == "room") {
+				return true;
+			}
+
+			reader->readNext();
+
+			if (!reader->isEndElement()) {
+				return false;
+			}
+
+			reader->readNextStartElement();
+		}
+
+		return false;
+	}
+
+	bool saveProject(QXmlStreamWriter *writer) const
+	{
+		writer->writeStartElement("", "room");
+
+		writer->writeEmptyElement("", "startpoint");
+		writer->writeAttribute("", "x", QString::number(startpoint.x));
+		writer->writeAttribute("", "y", QString::number(startpoint.y));
+
+		writer->writeEmptyElement("", "endpoint");
+		writer->writeAttribute("", "x", QString::number(endpoint.x));
+		writer->writeAttribute("", "y", QString::number(endpoint.y));
+
+		for (std::set<Coord2D>::const_iterator it = waypoints.begin();
+		     it != waypoints.end();
+		     ++it) {
+			writer->writeEmptyElement("", "waypoint");
+			writer->writeAttribute("", "x", QString::number(it->x));
+			writer->writeAttribute("", "y", QString::number(it->y));
+		}
+
+		writer->writeEndElement();
+
+		return !writer->hasError();
+	}
 };
 
 
@@ -395,6 +532,11 @@ struct Room::RoomImpl
 Room::Room(std::string const &filename, unsigned char distance)
 	: p(new RoomImpl(filename, distance))
 {
+}
+
+Room::~Room()
+{
+	delete p;
 }
 
 RoomImage const &Room::image() const
@@ -420,6 +562,11 @@ bool Room::setEndpoint(Coord2D const &coord)
 Coord2D Room::getEndpoint() const
 {
 	return p->endpoint;
+}
+
+void Room::setNodes(int amount)
+{
+	p->setNodes(amount);
 }
 
 bool Room::insertWaypoint(Coord2D const &coord)
@@ -480,4 +627,14 @@ std::vector<Triangle> Room::getRoomTriangulation() const
 std::vector<Coord2D> Room::generatePath() const
 {
 	return p->generatePath();
+}
+
+bool Room::loadProject(QXmlStreamReader *reader)
+{
+	return p->loadProject(reader);
+}
+
+bool Room::saveProject(QXmlStreamWriter *writer) const
+{
+	return p->saveProject(writer);
 }

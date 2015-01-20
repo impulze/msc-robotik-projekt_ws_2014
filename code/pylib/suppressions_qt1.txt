@@ -1,0 +1,113 @@
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   fun:strdup
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:/opt/qt54/lib/libQt5Gui.so.5.4.0
+   fun:_ZN13QFontDatabase8findFontEiPK12QFontPrivateRK8QFontDefb
+   fun:_ZN13QFontDatabase4loadEPK12QFontPrivatei
+   fun:_ZNK12QFontPrivate15engineForScriptEi
+   obj:/opt/qt54/lib/libQt5Gui.so.5.4.0
+   fun:_ZN9QTextLine13layout_helperEi
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   fun:strdup
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   fun:_ZN15QSessionManagerC1EP15QGuiApplicationR7QStringS3_
+   fun:_ZN22QGuiApplicationPrivate4initEv
+   fun:_ZN12QApplicationC1ERiPPci
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   fun:_ZN15QSessionManagerC1EP15QGuiApplicationR7QStringS3_
+   fun:_ZN22QGuiApplicationPrivate4initEv
+   fun:_ZN12QApplicationC1ERiPPci
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:/opt/qt54/lib/libQt5Gui.so.5.4.0
+   fun:_ZN13QFontDatabase8findFontEiPK12QFontPrivateRK8QFontDefb
+   fun:_ZN13QFontDatabase4loadEPK12QFontPrivatei
+   fun:_ZNK12QFontPrivate15engineForScriptEi
+   obj:/opt/qt54/lib/libQt5Gui.so.5.4.0
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   fun:_ZN27QPlatformIntegrationFactory6createERK7QStringRK11QStringListRiPPcS2_
+   fun:_ZN22QGuiApplicationPrivate25createPlatformIntegrationEv
+   fun:_ZN22QGuiApplicationPrivate21createEventDispatcherEv
+   fun:_ZN16QCoreApplication4initEv
+   fun:_ZN16QCoreApplicationC1ER23QCoreApplicationPrivate
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   fun:_ZN15QSessionManagerC1EP15QGuiApplicationR7QStringS3_
+   fun:_ZN22QGuiApplicationPrivate4initEv
+   fun:_ZN12QApplicationC1ERiPPci
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:/opt/qt54/lib/libQt5Gui.so.5.4.0
+   fun:_ZN13QFontDatabase8findFontEiPK12QFontPrivateRK8QFontDefb
+   fun:_ZN13QFontDatabase4loadEPK12QFontPrivatei
+   fun:_ZNK12QFontPrivate15engineForScriptEi
+   obj:/opt/qt54/lib/libQt5Gui.so.5.4.0
+   fun:_ZN9QTextLine13layout_helperEi
+}

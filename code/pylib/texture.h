@@ -7,6 +7,7 @@ class Texture
 {
 public:
 	Texture(Image const &image);
+	~Texture();
 
 	unsigned int width() const;
 	unsigned int height() const;

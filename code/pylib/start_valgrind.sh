@@ -1,0 +1,1 @@
+valgrind --leak-check=full --suppressions=suppressions_gobject.txt --suppressions=suppressions_qt1.txt --suppressions=suppressions_qt2.txt --suppressions=suppressions_rest.txt --gen-suppressions=all --track-origins=yes --log-file=myfile ./gui

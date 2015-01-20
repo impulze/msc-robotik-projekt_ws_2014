@@ -10,12 +10,15 @@
 #include <string>
 #include <vector>
 
+class QXmlStreamReader;
+class QXmlStreamWriter;
 class RoomImage;
 
 class Room
 {
 public:
 	Room(std::string const &filename, unsigned char distance);
+	~Room();
 
 	RoomImage const &image() const;
 
@@ -24,6 +27,8 @@ public:
 
 	bool setEndpoint(Coord2D const &coord);
 	Coord2D getEndpoint() const;
+
+	void setNodes(int amount);
 
 	bool insertWaypoint(Coord2D const &coord);
 	bool removeWaypoint(Coord2D const &coord);
@@ -38,6 +43,9 @@ public:
 	std::vector<Triangle> getTriangulation() const;
 	std::vector<Triangle> getRoomTriangulation() const;
 	std::vector<Coord2D> generatePath() const;
+
+	bool loadProject(QXmlStreamReader *reader);
+	bool saveProject(QXmlStreamWriter *writer) const;
 
 private:
 	class RoomImpl;

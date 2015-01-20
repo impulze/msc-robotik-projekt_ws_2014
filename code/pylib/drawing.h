@@ -1,6 +1,8 @@
 #ifndef ROB_DRAWING_H_INCLUDED
 #define ROB_DRAWING_H_INCLUDED
 
+class QXmlStreamReader;
+class QXmlStreamWriter;
 class Room;
 class Texture;
 
@@ -8,6 +10,7 @@ class Drawing
 {
 public:
 	Drawing();
+	~Drawing();
 
 	enum WaypointModification
 	{
@@ -34,7 +37,6 @@ public:
 	};
 
 	void fromImage(const char *name);
-	void toImage(const char *name);
 
 	void setNodes(int amount);
 	void setWaypointModification(WaypointModification modification);
@@ -44,6 +46,10 @@ public:
 	void initialize();
 	void paint();
 	void resize(int width, int height);
+
+	bool loadRoom(const char *name);
+	bool loadProject(QXmlStreamReader *reader);
+	bool saveProject(QXmlStreamWriter *writer) const;
 
 private:
 	class DrawingImpl;

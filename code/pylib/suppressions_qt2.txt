@@ -1,0 +1,102 @@
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   fun:_ZN14QLayoutPrivate16createWidgetItemEPK7QLayoutP7QWidget
+   fun:_ZN10QBoxLayout12insertWidgetEiP7QWidgeti6QFlagsIN2Qt13AlignmentFlagEE
+   fun:_ZN13CentralWidget18wantsProjectLoadedEv
+   fun:_ZN11QMetaObject8activateEP7QObjectiiPPv
+   fun:_ZN7QAction9triggeredEb
+   fun:_ZN7QAction8activateENS_11ActionEventE
+   obj:/opt/qt54/lib/libQt5Widgets.so.5.4.0
+   obj:/opt/qt54/lib/libQt5Widgets.so.5.4.0
+   fun:_ZN5QMenu17mouseReleaseEventEP11QMouseEvent
+   fun:_ZN7QWidget5eventEP6QEvent
+   fun:_ZN5QMenu5eventEP6QEvent
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   fun:_ZN9QMimeDataC1Ev
+   fun:_ZN17QInternalMimeDataC1Ev
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   fun:_ZN7QObject5eventEP6QEvent
+   fun:_ZN19QApplicationPrivate13notify_helperEP7QObjectP6QEvent
+   fun:_ZN12QApplication6notifyEP7QObjectP6QEvent
+   fun:_ZN16QCoreApplication14notifyInternalEP7QObjectP6QEvent
+   fun:_ZN23QCoreApplicationPrivate16sendPostedEventsEP7QObjectiP11QThreadData
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   fun:_ZN20QPlatformTextureListC1EP7QObject
+   obj:/opt/qt54/lib/libQt5Widgets.so.5.4.0
+   obj:/opt/qt54/lib/libQt5Widgets.so.5.4.0
+   fun:_ZN14QWidgetPrivate16syncBackingStoreEv
+   fun:_ZN7QWidget5eventEP6QEvent
+   fun:_ZN11QMainWindow5eventEP6QEvent
+   fun:_ZN19QApplicationPrivate13notify_helperEP7QObjectP6QEvent
+   fun:_ZN12QApplication6notifyEP7QObjectP6QEvent
+   fun:_ZN16QCoreApplication14notifyInternalEP7QObjectP6QEvent
+   fun:_ZN23QCoreApplicationPrivate16sendPostedEventsEP7QObjectiP11QThreadData
+   obj:/opt/qt54/lib/libQt5Core.so.5.4.0
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:calloc
+   obj:/usr/lib/x86_64-linux-gnu/dri/i965_dri.so
+   obj:/usr/lib/x86_64-linux-gnu/dri/i965_dri.so
+   obj:/opt/qt54/lib/libQt5Gui.so.5.4.0
+   obj:/opt/qt54/lib/libQt5Gui.so.5.4.0
+   obj:/opt/qt54/lib/libQt5Gui.so.5.4.0
+   obj:/opt/qt54/lib/libQt5Gui.so.5.4.0
+   fun:_ZN24QOpenGLFramebufferObjectC1ERK5QSizeRK30QOpenGLFramebufferObjectFormat
+   obj:/opt/qt54/lib/libQt5Widgets.so.5.4.0
+   fun:_ZN13QOpenGLWidget11resizeEventEP12QResizeEvent
+   fun:_ZN7QWidget5eventEP6QEvent
+   fun:_ZN19QApplicationPrivate13notify_helperEP7QObjectP6QEvent
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:calloc
+   obj:/usr/lib/x86_64-linux-gnu/dri/i965_dri.so
+   obj:/usr/lib/x86_64-linux-gnu/dri/i965_dri.so
+   obj:/opt/qt54/lib/libQt5Gui.so.5.4.0
+   obj:/opt/qt54/lib/libQt5Gui.so.5.4.0
+   fun:_ZN24QOpenGLFramebufferObjectC1ERK5QSizeRK30QOpenGLFramebufferObjectFormat
+   obj:/opt/qt54/lib/libQt5Widgets.so.5.4.0
+   fun:_ZN13QOpenGLWidget11resizeEventEP12QResizeEvent
+   fun:_ZN7QWidget5eventEP6QEvent
+   fun:_ZN19QApplicationPrivate13notify_helperEP7QObjectP6QEvent
+   fun:_ZN12QApplication6notifyEP7QObjectP6QEvent
+   fun:_ZN16QCoreApplication14notifyInternalEP7QObjectP6QEvent
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   obj:*
+   obj:*
+   obj:*
+   fun:_ZN7QObject5eventEP6QEvent
+   fun:_ZN19QApplicationPrivate13notify_helperEP7QObjectP6QEvent
+   fun:_ZN12QApplication6notifyEP7QObjectP6QEvent
+   fun:_ZN16QCoreApplication14notifyInternalEP7QObjectP6QEvent
+   fun:_ZN23QCoreApplicationPrivate16sendPostedEventsEP7QObjectiP11QThreadData
+   obj:/opt/qt54/lib/libQt5Core.so.5.4.0
+   fun:g_main_context_dispatch
+   obj:/lib/x86_64-linux-gnu/libglib-2.0.so.0.4002.0
+}

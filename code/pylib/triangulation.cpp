@@ -1,5 +1,6 @@
 #include "triangulation.h"
 
+#define CGAL_DISABLE_ROUNDING_MATH_CHECK 0
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Delaunay_triangulation_2.h>
 #include <CGAL/Constrained_Delaunay_triangulation_2.h>
@@ -483,6 +484,11 @@ DelaunayTriangulation::DelaunayTriangulation()
 {
 }
 
+DelaunayTriangulation::~DelaunayTriangulation()
+{
+	delete p;
+}
+
 NeighboursMap DelaunayTriangulation::getNeighbours() const
 {
 	return p->getNeighbours();
@@ -521,6 +527,11 @@ bool DelaunayTriangulation::pointIsVertex(Coord2D const &coord)
 ConstrainedDelaunayTriangulation::ConstrainedDelaunayTriangulation()
 	: p(new ConstrainedDelaunayTriangulationImpl)
 {
+}
+
+ConstrainedDelaunayTriangulation::~ConstrainedDelaunayTriangulation()
+{
+	delete p;
 }
 
 NeighboursMap ConstrainedDelaunayTriangulation::getNeighbours() const
