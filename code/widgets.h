@@ -6,6 +6,7 @@
 class Drawing;
 class DrawWidget;
 class QCheckBox;
+class QComboBox;
 class QLineEdit;
 class QPushButton;
 class QTextEdit;
@@ -70,6 +71,7 @@ private:
 	QCheckBox *boxShowWay_;
 	QCheckBox *boxShowPath_;
 	QCheckBox *boxShowNeighbours_;
+	QComboBox *boxAlgorithms_;
 	QPushButton *buttonAnimate_;
 	QPushButton *buttonStats_;
 	QTextEdit *statusText_;

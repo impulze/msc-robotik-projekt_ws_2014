@@ -66,6 +66,8 @@ public:
 	void setWaypointModification(Drawing::WaypointModification modification);
 	void setOption(Drawing::Option option, bool enabled);
 	bool getOption(Drawing::Option option) const;
+	void setAlgorithm(Room::Algorithm algorithm);
+	Room::Algorithm getAlgorithm() const;
 	void mouseClick(int x, int y);
 
 	std::size_t countWaypoints() const;
@@ -83,8 +85,10 @@ public:
 	bool getCoordFromMouseClick(int x, int y, Coord2D &coord);
 	void showNeighbours(Coord2D const &coord);
 
+	bool loadRoom(const char *name);
 	bool loadProject(QXmlStreamReader *reader);
 	bool saveProject(QXmlStreamWriter *writer) const;
+
 	void animationForward();
 
 	Drawing::WaypointModification waypointModification;
@@ -220,6 +224,18 @@ void Drawing::DrawingImpl::setOption(Drawing::Option option, bool enabled)
 bool Drawing::DrawingImpl::getOption(Drawing::Option option) const
 {
 	return show_[option];
+}
+
+void Drawing::DrawingImpl::setAlgorithm(Room::Algorithm algorithm)
+{
+	room->setAlgorithm(algorithm);
+
+	updateRoom();
+}
+
+Room::Algorithm Drawing::DrawingImpl::getAlgorithm() const
+{
+	return room->getAlgorithm();
 }
 
 void Drawing::DrawingImpl::mouseClick(int x, int y)
@@ -654,6 +670,12 @@ void Drawing::DrawingImpl::showNeighbours(Coord2D const &coord)
 	}
 }
 
+bool Drawing::DrawingImpl::loadRoom(const char *name)
+{
+	fromImage(name);
+	return true;
+}
+
 bool Drawing::DrawingImpl::loadProject(QXmlStreamReader *reader)
 {
 	if (!reader->isStartElement()) {
@@ -774,11 +796,6 @@ Drawing::~Drawing()
 	delete p;
 }
 
-void Drawing::fromImage(const char *name)
-{
-	p->fromImage(name);
-}
-
 void Drawing::setNodes(int amount)
 {
 	p->setNodes(amount);
@@ -797,6 +814,16 @@ void Drawing::setOption(Option option, bool enabled)
 bool Drawing::getOption(Option option) const
 {
 	return p->getOption(option);
+}
+
+void Drawing::setAlgorithm(Room::Algorithm algorithm)
+{
+	p->setAlgorithm(algorithm);
+}
+
+Room::Algorithm Drawing::getAlgorithm() const
+{
+	return p->getAlgorithm();
 }
 
 void Drawing::mouseClick(int x, int y)
@@ -827,6 +854,11 @@ void Drawing::resize(int width, int height)
 void Drawing::animate()
 {
 	p->animate();
+}
+
+bool Drawing::loadRoom(char const *name)
+{
+	return p->loadRoom(name);
 }
 
 bool Drawing::loadProject(QXmlStreamReader *reader)

@@ -8,6 +8,7 @@
 #include <QtGui/QIntValidator>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QCheckBox>
+#include <QtWidgets/QComboBox>
 #include <QtWidgets/QDialogButtonBox>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QHeaderView>
@@ -105,6 +106,7 @@ CentralWidget::CentralWidget(QWidget *parent)
 	QLabel *helpLabel = new QLabel(tr("Help"));
 	helpText_ = new QTextEdit(this);
 	helpText_->setDisabled(true);
+	QLabel *algorithmsLabel = new QLabel(tr("Algorithms"));
 
 	QLabel *amountLabel = new QLabel(tr("Amount of nodes"), this);
 	amountField_ = new QLineEdit(this);
@@ -120,6 +122,9 @@ CentralWidget::CentralWidget(QWidget *parent)
 	boxShowWay_ = new QCheckBox(tr("Show waypoints"), this);
 	boxShowPath_ = new QCheckBox(tr("Show path"), this);
 	boxShowNeighbours_ = new QCheckBox(tr("Show neighbours"), this);
+	boxAlgorithms_ = new QComboBox(this);
+	boxAlgorithms_->addItem("Dijkstra");
+	boxAlgorithms_->addItem("A*");
 	buttonAnimate_ = new QPushButton(tr("Animate"), this);
 	buttonStats_ = new QPushButton(tr("Statistics"), this);
 
@@ -132,6 +137,7 @@ CentralWidget::CentralWidget(QWidget *parent)
 	connect(boxShowWay_, SIGNAL(stateChanged(int)), this, SLOT(checkBoxChanged(int)));
 	connect(boxShowPath_, SIGNAL(stateChanged(int)), this, SLOT(checkBoxChanged(int)));
 	connect(boxShowNeighbours_, SIGNAL(stateChanged(int)), this, SLOT(checkBoxChanged(int)));
+	connect(boxAlgorithms_, SIGNAL(activated(int)), this, SLOT(checkBoxChanged(int)));
 	connect(buttonAnimate_, SIGNAL(clicked()), this, SLOT(buttonClicked()));
 	connect(buttonStats_, SIGNAL(clicked()), this, SLOT(buttonClicked()));
 
@@ -159,14 +165,29 @@ CentralWidget::CentralWidget(QWidget *parent)
 	line2->setFrameShape(QFrame::HLine);
 	line2->setFrameShadow(QFrame::Sunken);
 	sideLayout->addWidget(line2);
-	QSpacerItem *spacer = new QSpacerItem(1, 1, QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
-	sideLayout->addItem(spacer);
-	sideLayout->addWidget(statusLabel);
-	sideLayout->addWidget(statusText_);
+#if 0
+	QHBoxLayout *algorithmsLayout = new QHBoxLayout;
+	algorithmsLayout->addWidget(algorithmsLabel);
+	algorithmsLayout->addWidget(boxDijkstra_);
+	algorithmsLayout->addWidget(boxAStar_);
+	QSpacerItem *spacer1 = new QSpacerItem(1, 1, QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
+	algorithmsLayout->addItem(spacer1);
+	sideLayout->addLayout(algorithmsLayout);
+#endif
+	sideLayout->addWidget(algorithmsLabel);
+	sideLayout->addWidget(boxAlgorithms_);
 	QFrame *line3 = new QFrame(this);
 	line3->setFrameShape(QFrame::HLine);
 	line3->setFrameShadow(QFrame::Sunken);
 	sideLayout->addWidget(line3);
+	QSpacerItem *spacer2 = new QSpacerItem(1, 1, QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
+	sideLayout->addItem(spacer2);
+	sideLayout->addWidget(statusLabel);
+	sideLayout->addWidget(statusText_);
+	QFrame *line4 = new QFrame(this);
+	line4->setFrameShape(QFrame::HLine);
+	line4->setFrameShadow(QFrame::Sunken);
+	sideLayout->addWidget(line4);
 	sideLayout->addWidget(helpLabel);
 	sideLayout->addWidget(helpText_);
 	QHBoxLayout *mainLayout = new QHBoxLayout(this);
@@ -203,7 +224,7 @@ void CentralWidget::wantsRoomLoaded()
 
 	createNewDrawing();
 
-	drawing_->fromImage(filename.toStdString().c_str());
+	drawing_->loadRoom(filename.toStdString().c_str());
 
 	createDrawWidget();
 }
@@ -386,6 +407,13 @@ void CentralWidget::checkBoxChanged(int state)
 
 		drawing_->setWaypointModification(mod);
 		return;
+	} else if (sender == boxAlgorithms_) {
+		if (state == 0) {
+			drawing_->setAlgorithm(Room::Dijkstra);
+		} else {
+			drawing_->setAlgorithm(Room::AStar);
+		}
+		return;
 	}
 
 	Drawing::Option option;
@@ -536,12 +564,14 @@ void CentralWidget::createDrawWidget()
 	boxShowWay_->setCheckState(drawing_->getOption(Drawing::ShowWaypoints) ? Qt::Checked : Qt::Unchecked);
 	boxShowPath_->setCheckState(drawing_->getOption(Drawing::ShowPath) ? Qt::Checked : Qt::Unchecked);
 	boxShowNeighbours_->setCheckState(drawing_->getOption(Drawing::ShowNeighbours) ? Qt::Checked : Qt::Unchecked);
+	boxAlgorithms_->setCurrentIndex(drawing_->getAlgorithm() == Room::Dijkstra ? 0 : 1);
 }
 
 void CentralWidget::createNewDrawing()
 {
 	delete stats_;
 	stats_ = new Stats();
+	printf("new stats module: %p\n", stats_);
 
 	drawing_ = new Drawing(stats_, statusText_, helpText_);
 }

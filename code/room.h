@@ -19,6 +19,12 @@ class Stats;
 class Room
 {
 public:
+	enum Algorithm
+	{
+		Dijkstra,
+		AStar
+	};
+
 	Room(std::string const &filename, unsigned char distance, Stats *stats, QTextEdit *statusText, QTextEdit *helpText);
 	~Room();
 
@@ -37,6 +43,9 @@ public:
 	void clearWaypoints();
 	bool hasWaypoint(Coord2D const &coord) const;
 	std::set<Coord2D> const &getWaypoints() const;
+
+	void setAlgorithm(Algorithm algorithm);
+	Algorithm getAlgorithm() const;
 
 	NeighboursMap getNeighbours() const;
 	std::vector< std::vector<Edge> > getEdges() const;

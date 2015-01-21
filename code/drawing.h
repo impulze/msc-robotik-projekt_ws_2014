@@ -1,6 +1,8 @@
 #ifndef ROB_DRAWING_H_INCLUDED
 #define ROB_DRAWING_H_INCLUDED
 
+#include "room.h"
+
 #include <QObject>
 
 #include <cstddef>
@@ -8,7 +10,6 @@
 class QTextEdit;
 class QXmlStreamReader;
 class QXmlStreamWriter;
-class Room;
 class Stats;
 class Texture;
 
@@ -39,12 +40,12 @@ public:
 		ShowNeighbours
 	};
 
-	void fromImage(const char *name);
-
 	void setNodes(int amount);
 	void setWaypointModification(WaypointModification modification);
 	void setOption(Option option, bool enabled);
 	bool getOption(Option option) const;
+	void setAlgorithm(Room::Algorithm algorithm);
+	Room::Algorithm getAlgorithm() const;
 	void mouseClick(int x, int y);
 
 	std::size_t countWaypoints() const;

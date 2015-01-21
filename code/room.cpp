@@ -15,6 +15,8 @@
 #include <QtCore/QXmlStreamWriter>
 #include <QtWidgets/QTextEdit>
 
+#include <stdio.h>
+
 namespace
 {
 
@@ -48,7 +50,8 @@ struct Room::RoomImpl
 		: image(new RoomImage(filename)),
 		  statusText_(statusText),
 		  helpText_(helpText),
-		  stats(stats)
+		  stats(stats),
+		  algorithm(Room::Dijkstra)
 	{
 		bytes = image->data().data();
 		width = image->width();
@@ -154,6 +157,7 @@ struct Room::RoomImpl
 	QTextEdit *helpText_;
 	std::vector<Polygon2D> doorPolygons_;
 	Stats *stats;
+	Room::Algorithm algorithm;
 
 	bool insert(Coord2D const &coord)
 	{
@@ -431,6 +435,16 @@ struct Room::RoomImpl
 		return false;
 	}
 
+	void setAlgorithm(Room::Algorithm algorithm)
+	{
+		this->algorithm = algorithm;
+	}
+
+	Room::Algorithm getAlgorithm() const
+	{
+		return algorithm;
+	}
+
 	std::vector<Coord2D> generatePath()
 	{
 		NeighboursMap neighbours = triangulation.getNeighbours();
@@ -447,7 +461,15 @@ struct Room::RoomImpl
 			}
 		}
 
-		std::vector<Coord2D> generatedPath = dijkstra(neighbours, startpoint, endpoint);
+		std::vector<Coord2D> generatedPath;
+
+		stats->lastUsedAlgorithm = algorithm;
+
+		if (algorithm == Room::Dijkstra) {
+			generatedPath = dijkstra(neighbours, startpoint, endpoint);
+		} else {
+			generatedPath = astar(neighbours, startpoint, endpoint);
+		}
 
 		return generatedPath;
 	}
@@ -609,6 +631,16 @@ bool Room::hasWaypoint(Coord2D const &coord) const
 std::set<Coord2D> const &Room::getWaypoints() const
 {
 	return p->waypoints;
+}
+
+void Room::setAlgorithm(Algorithm algorithm)
+{
+	p->setAlgorithm(algorithm);
+}
+
+Room::Algorithm Room::getAlgorithm() const
+{
+	return p->getAlgorithm();
 }
 
 NeighboursMap Room::getNeighbours() const
