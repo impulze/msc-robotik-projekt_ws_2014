@@ -76,14 +76,14 @@ def calc_all_rot_matrix(alpha, beta, gamma):
 def m1(theta, d, a):
 	s = sin_deg(theta)
 	c = cos_deg(theta)
-	sa = -1
+	sa = 1
 	ca = 0
 
 	return calc_all_pos_matrix(s, c, sa, ca, d, a)
 
 def m2(theta, d, a):
-	s = -cos_deg(theta)
-	c = -sin_deg(theta)
+	s = cos_deg(theta)
+	c = sin_deg(theta)
 	sa = 0
 	ca = 1
 
@@ -92,7 +92,7 @@ def m2(theta, d, a):
 def m3(theta, d, a):
 	s = sin_deg(theta)
 	c = cos_deg(theta)
-	sa = -1
+	sa = 1
 	ca = 0
 
 	return calc_all_pos_matrix(s, c, sa, ca, d, a)
