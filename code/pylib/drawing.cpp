@@ -155,7 +155,7 @@ void Drawing::DrawingImpl::updateRoom()
 		std::reverse(path.begin(), path.end());
 	}
 
-	pathPoints = catmullRom(path, 100);
+	pathPoints = catmullRom(path, 150);
 
 	pathCollisions.clear();
 
@@ -527,6 +527,15 @@ void Drawing::DrawingImpl::animate()
 	animated = true;
 	animationTimer->start(1000 / 16);
 	animationPoints = pathPoints;
+
+	if (!animationPoints.empty()) {
+		Coord2DTemplate<float> firstPosition = *animationPoints.begin();
+
+		if (firstPosition.x == room->getEndpoint().x && firstPosition.y == room->getEndpoint().y) {
+			std::reverse(animationPoints.begin(), animationPoints.end());
+		}
+	}
+
 	animationPosition = animationPoints.begin();
 }
 
