@@ -1,6 +1,8 @@
 #ifndef ROB_WIDGETS_H_INCLUDED
 #define ROB_WIDGETS_H_INCLUDED
 
+#include <map>
+
 #include <QtWidgets/QMainWindow>
 
 class Drawing;
@@ -49,6 +51,7 @@ private Q_SLOTS:
 	void sceneCouldChange();
 
 private:
+	void removeRoom();
 	bool checkBoxEvent(QObject *object, QEvent *event);
 
 private:
@@ -66,6 +69,7 @@ private:
 	QCheckBox *boxShowNeighbours_;
 	QTextEdit *statusText_;
 	QTextEdit *helpText_;
+	std::map<int, bool> showOptions_;
 
 	friend class CheckBoxEventFilter;
 };

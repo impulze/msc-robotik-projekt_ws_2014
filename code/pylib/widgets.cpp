@@ -116,7 +116,9 @@ CentralWidget::CentralWidget(QWidget *parent)
 	mainLayout->addLayout(sideLayout);
 
 	boxShowWay_->setCheckState(Qt::Checked);
+	showOptions_[Drawing::ShowWaypoints] = true;
 	boxShowPath_->setCheckState(Qt::Checked);
+	showOptions_[Drawing::ShowPath] = true;
 
 	CheckBoxEventFilter *filter = new CheckBoxEventFilter(this);
 	boxAdd_->installEventFilter(filter);
@@ -144,17 +146,7 @@ void CentralWidget::wantsRoomLoaded()
 		return;
 	}
 
-	if (drawWidget_) {
-		QWidget *widget = layout()->takeAt(layout()->indexOf(drawWidget_))->widget();
-		DrawWidget *drawWidget = static_cast<DrawWidget *>(widget);
-		layout()->removeWidget(drawWidget);
-	}
-
-	delete drawWidget_;
-	drawWidget_ = 0;
-
-	delete drawing_;
-	drawing_ = 0;
+	removeRoom();
 
 	drawing_ = new Drawing(statusText_, helpText_);
 	drawing_->fromImage(filename.toStdString().c_str());
@@ -162,6 +154,10 @@ void CentralWidget::wantsRoomLoaded()
 	amountField_->setText(QString::number(drawing_->countWaypoints()));
 	connect(drawWidget_, SIGNAL(mouseClicked()), this, SLOT(sceneCouldChange()));
 	static_cast<QHBoxLayout *>(layout())->addWidget(drawWidget_, 1);
+
+	for (std::map<int, bool>::const_iterator i = showOptions_.begin(); i != showOptions_.end(); i++) {
+		drawing_->setOption(static_cast<Drawing::Option>(i->first), i->second);
+	}
 }
 
 void CentralWidget::wantsProjectLoaded()
@@ -172,18 +168,7 @@ void CentralWidget::wantsProjectLoaded()
 		return;
 	}
 
-	if (drawWidget_) {
-		QWidget *widget = layout()->takeAt(layout()->indexOf(drawWidget_))->widget();
-		DrawWidget *drawWidget = static_cast<DrawWidget *>(widget);
-
-		layout()->removeWidget(drawWidget);
-	}
-
-	delete drawWidget_;
-	drawWidget_ = 0;
-
-	delete drawing_;
-	drawing_ = 0;
+	removeRoom();
 
 	QFile loadFile(filename);
 	loadFile.open(QIODevice::ReadOnly | QIODevice::Text);
@@ -254,6 +239,10 @@ void CentralWidget::wantsProjectLoaded()
 		amountField_->setText(QString::number(drawing_->countWaypoints()));
 		connect(drawWidget_, SIGNAL(mouseClicked()), this, SLOT(sceneCouldChange()));
 		static_cast<QHBoxLayout *>(layout())->addWidget(drawWidget_, 1);
+
+		for (std::map<int, bool>::const_iterator i = showOptions_.begin(); i != showOptions_.end(); i++) {
+			drawing_->setOption(static_cast<Drawing::Option>(i->first), i->second);
+		}
 	}
 }
 
@@ -371,6 +360,7 @@ void CentralWidget::checkBoxChanged(int state)
 		option = Drawing::ShowNeighbours;
 	}
 
+	showOptions_[option] = state == Qt::Checked;
 	drawing_->setOption(option, state == Qt::Checked);
 }
 
@@ -390,6 +380,21 @@ void CentralWidget::amountOfNodesChanged()
 void CentralWidget::sceneCouldChange()
 {
 	amountField_->setText(QString::number(drawing_->countWaypoints()));
+}
+
+void CentralWidget::removeRoom()
+{
+	if (drawWidget_) {
+		QWidget *widget = layout()->takeAt(layout()->indexOf(drawWidget_))->widget();
+		DrawWidget *drawWidget = static_cast<DrawWidget *>(widget);
+		layout()->removeWidget(drawWidget);
+	}
+
+	delete drawWidget_;
+	drawWidget_ = 0;
+
+	delete drawing_;
+	drawing_ = 0;
 }
 
 bool CentralWidget::checkBoxEvent(QObject *object, QEvent *event)
