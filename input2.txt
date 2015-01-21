@@ -1,0 +1,16 @@
+theta1=40
+theta2=80
+theta3=110
+theta4=25
+theta5=-40
+theta6=-60
+px=0
+py=0
+pz=0
+a1=100
+d1=350
+a2=250
+a3=130
+d4=250
+d6=85
+show

@@ -1,0 +1,8 @@
+px=10
+py=20
+pz=30
+d1=80
+d4=50
+theta1=0
+theta2=90
+show

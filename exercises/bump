@@ -1,0 +1,33 @@
+nx = ncd(beta) * ncd(gamma)
+ny = ncd(beta) * nsd(gamma)
+nz = -nsd(beta)
+sx = nsd(alpha) * nsd(beta) * ncd(gamma) - ncd(alpha) * nsd(gamma)
+sy = nsd(alpha) * nsd(beta) * nsd(gamma) - ncd(alpha) * ncd(gamma)
+sz = nsd(alpha) * ncd(beta)
+
+_m01 = m01(theta1)
+_m12 = m12(theta2)
+_m23 = m23(theta3)
+_m03 = _m01.dot(_m12).dot(_m23)
+_m10 = m10(theta1)
+_m21 = m21(theta2)
+_m32 = m32(theta3)
+_m30 = _m32.dot(_m21).dot(_m10)
+
+pos_matrix = numpy.matrix([
+	[nx, sx, ax, 0],
+	[ny, sy, ay, 0],
+	[nz, sz, az, 0],
+	[0, 0, 0, 1.0]
+])
+
+inv_m6t = inv_m6t(0)
+
+# check inverse
+#print _m01.dot(_m10)
+#print _m12.dot(_m21)
+#print _m23.dot(_m32)
+#print _m03.dot(_m30)
+
+m36 = _m30.dot(pos_matrix).dot(inv_m6t)
+theta4 = at2(-m36.item(1, 2), -m36.item(0, 2))
