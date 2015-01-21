@@ -1,0 +1,409 @@
+\documentclass[a4paper]{article}
+
+\sloppy
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8x]{inputenc}
+\usepackage[pdftex]{graphics}
+\usepackage[ngerman]{babel}
+\usepackage{graphicx}
+\usepackage{tabularx}
+\usepackage{amsmath,amssymb,amstext}
+\usepackage{bibtopic}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{multirow}
+\usepackage{listings}
+
+\author{Daniel Mierswa}
+
+\renewcommand{\lstlistingname}{\normalsize Quellcode}
+\renewcommand{\lstlistlistingname}{Verzeichnis der Quellcodes}
+
+\pagestyle{plain}
+\bibliographystyle{alpha}
+
+\newcommand{\cmacro}[1]{\mbox{\textsc{#1}}}
+
+\usepackage{pdfpages}
+
+\title{
+	\textbf{Dokumentation für das Projekt in der Lehrveranstaltung Robotik}
+}
+
+\author{
+	\textit{Mierswa, Daniel} \\
+	Matrikelnummer: XXXXXX \\
+	daniel.mierswa@student.hs-rm.de \\
+}
+
+\begin{document}
+
+\maketitle
+\newpage
+\tableofcontents
+\newpage
+
+\section{Einleitung}
+
+Die Robotik ist längst ein großes Anwendungsfeld der Informatik.
+Roboter, als Entitäten der Robotik, werden z.B. stationär in der Industrie
+oder autonom in Gefahrengebieten genutzt.
+Dadurch wird ersichtlich, dass die Einsatzbereiche sehr heterogen sind und
+entsprechend andere Anforderungen an einen Roboter existieren.
+In Zukunft werden Roboter, auch bedingt durch die wachsende Anzahl an eingebetteten
+Geräten, die einem im Alltag begegnen, vermehrt in anderen Gebieten erwartet, z.B. im Pflegebereich
+(Ambient Assited Living) oder Servicebereich, wodurch sie auch Serviceroboter genannt werden.
+Bei stationären Robotern ist die Umsetzung der Kinematik ein wesentlicher Aspekt und wird
+in der Regel durch entsprechende Mathematik unterstützt.
+Für alle Robotertypen ist die Navigation, also insbesondere die Wegfindung bzw. Bahnplanung und
+die damit verbundene Kollisionsprüfung eine zu lösende Herausforderung und ein Anwendungsgebiet der Informatik.
+Für die Bahnplanung existieren verschiedene Konzepte, inklusive derer Modelle und Algorithmen.
+Aufgrund der vielfältigen Möglichkeiten und Lösungsansätze zur Planung und Umsetzung eines
+mobilen Roboters, entstand im Rahmen der Lehrveranstaltung Robotik im Master-Studiengang Informatik
+der Hochschule RheinMain, ein Projekt, welches einen konkreten Anwendungsfall umsetzen soll.
+
+\section{Aufgabe}
+
+Die Aufgabe, die dieses Projekt versucht zu lösen, umfasst die Bahnplanung in zwei nahe zu
+gleichgroßen 2D-Räumen.
+Die Räume werden mit festen Blockaden bzw. Gegenständen bestückt und einer Tür bestückt.
+In diesen Räumen sollen statistisch Wegpunkte verteilt werden, welche dann als Knoten für einen gewichteten Graphen dienen.
+Anhand dieses Graphen, soll dann mit dem Dijkstra-Algorithmus der kürzeste Pfad von einem
+Start- zu einem Endpunkt berechnet werden.
+Falls genügend Bearbeitungszeit zur Verfügung, kann als zusätzliche Alternative der A*-Algorithmus
+verwendet werden.
+Nachdem ein Pfad gefunden wurde, soll geprüft werden, ob dieser mit den Wänden des Raumes oder den darin befindlichen
+Objekten kollidiert.
+Falls keine Kollision auftritt, wird mittels der Anwendung von Catmull-Rom Splines eine Kurve
+erstellt, die die entsprechenden Wegpunkte berührt.
+Erneut wird nach dem Erstellen der Kurve geprüft, ob Kollisionen auftreten.
+Zur Veranschaulichung der Lösung, soll ein Programm entwickelt werden, welches mindestens die folgenden Funktionalitäten anbietet:
+
+\begin{itemize}
+\item Darstellung der 2D-Räume und der darin befindlichen Objekte
+\item Roboter-Entität als kreisförmiges Objekt
+\item Eingabe des Start- und Zielpunkts
+\item Verändern der Anzahl der Wegpunkte
+\item Anzeige der Programmlaufzeit für die Bahnplanung
+\item Veranschaulichung einer möglichen auftretenden Kollision
+\end{itemize}
+
+Aufgrund der Anforderungen müssen im Programm folgende Aspekte umgesetzt werden:
+
+\begin{itemize}
+\item Verarbeitung einer Bilddatei eines Raumes
+\item Erstellen einer Benutzeroberfläche
+\item Zeichnen einer 2D-Szene inklusive entsprechenden Veränderungen, die durch den Benutzer gesteuert werden
+\item Messen von Programmlaufzeiten für die Durchführung verschiedener Aktionen
+\end{itemize}
+
+\section{Grundlagen}
+\label{Grundlagen}
+
+Um die im weiteren Verlauf beschriebenen Lösungsansätze besser zu verstehen, werden in diesem Kapitel
+die Begriffe, die in der Aufgabenstellung relevant sind, näher erläutert.
+
+\subsection{Bahnplanung}
+
+Um eine Bahnplanung programmatisch zu realisieren, werden Modelle erstellt, in denen dann Algorithmen
+einen Pfad finden können.
+Die Modelle werden entweder statisch hinterlegt oder dynamisch zur Laufzeit berechnet.
+Je nach Einsatzgebiet des Roboters empfiehlt sich die eine oder andere Methode.
+Auch vom Einsatzgebiet und der Aufgabenstellung des Roboters ist abhängig, ob ein 2D- oder 3D-Modell
+erstellt werden muss.
+
+Eine mögliche 2D-Modellierung ist das Umgebungsmodell.
+In einem Umgebungsmodell wird die Umgebung in ein Raster eingeteilt.
+Die Zellen in dem Raster können dann entweder frei, besetzt oder, bei einem groben Raster, teilbesetzt sein.
+Als Hilfestellung dienen oft CAD-Pläne des Raumes (oder Industriehalle, o.ä.).
+Der Roboter wird dann entsprechend seiner Form in dieses Modell projiziert und die Aufgabe ist es dann,
+den Roboter in diesem Umgebungsmodell so navigieren zu lassen, dass er keine belegten Zellen berührt,
+um so eine Kollisionsprüfung zu vermeiden.
+Im Falle einer Berührung mit einer teilbesetzten Zelle, muss eine Kollisionsprüfung vorgenommen werden.
+
+Eine Alternative zum Umgebungsmodell ist das Konfigurationsmodell.
+Im Konfigurationsmodell wird der Roboter als Punkt (in der Bildverarbeitung z.B. ein Pixel) modelliert.
+Die Objekte im Raum werden entsprechend des Durchmessers des Roboters mit einem Rand versehen.
+Die Betrachtung dieses Modells erlaubt eine einfachere Bahnplanung.
+Der Unterschied der beiden Modelle kann analog in der Bildverarbeitung bei der Erosion und Dilation
+wiedergefunden werden.
+
+\subsection{Dijkstra-Algorithmus}
+
+Der Dijkstra-Algorithmus wurde 1956 vom Wissenschaftler Edsger Dijkstra entwickelt.
+Er dient zur Findung des kürzesten Pfades in einem gewichteten Graphen mit positiven
+Kantengewichtungen.
+Der Algorithmus ist \emph{greedy}, was bedeutet, dass er das beste Ergebnis
+in jedem Schritt betrachtet, um so eine Gesamtlösung zu formen.
+Die Knoten werden mit einer Distanz versehen, welche sich aus verschiedenen Schritten errechnet.
+Initial werden alle Knoten mit einer Maximaldistanz (\emph{Unendlich}) versehen.
+Der Startknoten bekommt die Distanz \emph{0}.
+Weiterhin wird initial eine Menge erstellt, in der alle Knoten (ohne den Startknoten) enthalten sind.
+Nun werden alle noch nicht betrachteten Knoten aus dieser Menge iterativ betrachtet.
+Dabei wird immer zunächst der Knoten, mit der minimalen Distanz gewählt.
+Bei der Betrachtung wird die Distanz neu berechnet, indem die Gewichtung der Kante mit einbezogen wird.
+Dieser Knoten wird dann mit der kleinsten Distanz markiert und im Algorithmus nicht weiter betrachtet.
+Ist man am Endknoten angelangt, so kann der Algorithmus hier terminieren, wenn nur der kürzeste
+Weg zwischen einem Start- und Endknoten gesucht wird.
+
+\subsection{A*-Algorithmus}
+
+Der A*-Algorithmus ist im wesentlichen eine Erweiterung und Verbesserung des Dijkstra-Algorithmus.
+Er wurde im Stanford Forschungsinstitut 1968 erstmalig beschrieben.
+Um die Laufzeit zu verbessern, benutzt der A*-Algorithmus eine heuristische Funktion.
+Genau wie beim Dijkstra-Algorithmus, wird aus der Menge der Knoten, welche noch nicht betrachtet wurden,
+ein Knoten zur Betrachtung ausgewählt.
+Dieser Knoten wird so ausgewählt, dass die heuristische Funktion (oft die euklidische Distanz)
+minimal ist.
+Anders formuliert ist der Dijkstra-Algorithmus eine Spezialisierung des A*-Algorithmus, wobei
+die heuristische Funktion stets einen festen Wert (\emph{0}) liefert.
+Damit der Algorithmus optimal ist, darf die heuristische Funktion keine größere Distanz zwischen
+zwei Knoten liefern, als die kleinste tatsächliche Distanz zwischen ihnen.
+
+\subsection{Catmull-Rom Splines}
+
+%http://www.cemyuksel.com/research/catmullrom_param/catmullrom.pdf
+%http://www.cs.utexas.edu/~fussell/courses/cs384g/lectures/lecture16-Interpolating_curves.pdf
+
+Catmull-Rom Splines ist eine Klasse von interpolierenden Polygonzügen, die von Edwin Catmull und
+Raphael Rom 1974 entwickelt und beschrieben wurde.
+Sie werden in der Modellierung bis zur Animation verwendet.
+Interpolierende Polygonzüge berühren dessen Stützpunkte, was zur Folge hat, dass bei der Benutzung
+dieser Splines eine Kontrolle über einige Punkte des Splines erlaubt.
+Ebenfalls hat der Catmull-Rom Spline lokale Eigenschaften, so dass bei der Änderung an bestimmten
+Kontrollpunkten nur ein bestimmtes Teilsegment der Kurve beeinträchtigt wird.
+Catmull-Rom Splines sind weiterhin glatt, was für die Animation eine relevante Eigenschaft ist.
+In der Klasse der Splines unterscheidet man zwischen verschiedenen Parametrisierungen, so dass
+die Stützpunkte in verschiedener Weise durchlaufen werden.
+
+Der Spline ist kubisch, was bedeutet, dass 4 Berechnungspunkte für eine Kurve (bzw. ein Kurvensegment)
+benötigt werden, welche durch 2 Stützpunkte verläuft.
+Die zusätzlich benötigten 2 Stützpunkte enthalten den vorherigen Punkt und den nächsten Punkt der Kurve.
+Da es im letzten Kurvensegment keinen nächsten Punkt bzw. im ersten Kurvensegment keinen vorherigen Punkt
+gibt, müssen diese beiden Segmente separat betrachtet werden.
+Die Punkte der Verbindungslinie können mit linearer Algebra berechnet werden.
+
+\section{Konzept}
+\label{Konzept}
+
+Im folgenden Kapitel wird das Konzept des Programms näher erläutert.
+Zunächst wird die Architektur und die Komponenten des Programms erklärt.
+Für jede Komponente folgt eine zusätzliche Beschreibung, in der feiner erklärt wird,
+wie die entwickelten Teillösungen die Lösung der Aufgabenstellung unterstützen.
+
+Das Programm besitzt im wesentlichen 3 Teilsysteme: Graphische Bedienoberfläche, Algorithmen und Datenverarbeitung, sowie
+ein Teilsystem, welches die Szene in der sich der virtuelle Roboter bewegt, visualisiert.
+Sofern möglich, wurde versucht, die einzelnen Systeme modular in Programmcode zu entwickeln.
+
+%\includegraphics{arch.png}
+
+\subsection{Graphische Bedienoberfläche}
+
+Das GUI wird mit Qt entwickelt.
+Die Oberfläche besteht aus einer 2-teiligen Menüführung (wie üblich unter der Titelzeile) und
+einem 2-spaltigen Layout als zentrale Komponente.
+Die Menüführung dient zum einen dazu, das Programm zu beenden und zum anderen dazu, den aktuellen
+Stand des Programms in eine Datei zu speichern, so dass dieser zu einem späteren Zeitpunkt
+nachgeladen werden kann.
+Ein weiterer Menüpunkt wird bereitgestellt, um ein Bild eines Raumes zu laden, worin der Roboter
+seine Bahnplanung durchführen soll.
+
+Wurde ein Bild eines Raumes erfolgreich geladen, so wird in der rechten Spalte der Oberfläche eine Szene
+angezeigt, in der sich verschiedene Elemente befinden.
+In der linken Spalte befinden sich verschiedene Auswahlkästchen, mit denen die Szene beeinflusst werden kann.
+Um die Elemente in der Szene besser sichtbar zu mache, werden diese unterschiedlich eingefärbt.
+
+\subsection{Visualisierung}
+
+Für die Visualisierung wurde das OpenGL-Framework benutzt, welches es ermöglicht sehr detaillierte Szenen
+zu konstruieren.
+Das Framework war für das Projekt nicht zwingend erforderlich, wurde aber dennoch gewählt, da es bereits
+in vorherigen Lehrveranstaltungen, die der Projektdurchführende besucht hat, verwendet wurde und somit eine gewisse
+Erfahrung vorhanden war.
+Als Alternative hätten ebenfalls Komponenten des GUI (z.B. QGraphicsScene o.ä.) verwendet werden können.
+
+Das Framework bietet mit der Verarbeitung von Texturen und dem Zeichnen von Punkten und Linien, 2 wesentliche Komponenten,
+die zur Bearbeitung des Projekts benötigt wurden.
+Entsprechend der Einstellungen aus der graphischen Bedienoberfläche, werden in der Szene Aktionen ausgeführt.
+Dadurch muss das Modul der Visualisierung eine Schnittstelle anbieten, die von der Bedienoberfläche benutzt werden kann.
+Die Schnittstelle umfasst das Setzen von Optionen (entsprechend jener aus der Bedienoberfläche), das Abfangen
+von Mausklicks, das Laden von einer Raum-Bilddatei, sowie die grundlegende Schnittstelle zum Initialisieren der Graphikszene
+und dem Zeichnen der aktuellen Szene.
+
+\subsection{Algorithmen zur Bahnplanung}
+
+Die Algorithmen, welche zur Berechnung der notwendigen Punkte gebraucht werden, befinden sich in extra
+Modulen.
+Sie werden bei der Visualisierung einmalig verwendet und die Ergebnisse im Programmspeicher hinterlegt.
+Dies hat zur Folge, dass der Speicherverbrauch etwas wächst, jedoch die Performance stark positiv
+beeinflusst, da die  Berechnungen sonst bei jedem Neuzeichnen der Szene (die Visualisierungskomponente zeichnet
+die Szene stets neu) durchgeführt werden müssten.
+Für die Module existieren 2 große Teilmengen von Algorithmen: Algorithmen zur Planung eines Pfades durch
+verschiedene Punkte und Algorithmen zur Verarbeitung einer Bilddatei.
+
+\section{Umsetzung}
+
+Im folgenden Kapitel wird die konkrete Umsetzung basierend auf dem vorher entwickelten Konzept \ref{Konzept}
+detailliert beschrieben.
+Dabei wird zentral betrachtet, wie eine Problemstellung versucht wurde zu lösen, insbesondere
+welche Lösungsansätze es gibt und warum sich für eine bestimmte Lösung entschieden wurde.
+Weiterhin werden Algorithmen, welche für die Ausführung benötigt wurden und im Grundlagen-Kapitel \ref{Grundlagen} nicht
+erklärt wurden, sofern als sinnvoll erachtet, beschrieben.
+
+\subsection{Bildverarbeitung}
+
+Für die Verarbeitung des Raumes wird nicht jeder Pixel des Bildes benötigt.
+Vielmehr wird das Bild so analysiert, dass die Rahmen der darin befindlichen Objekte, sowie der Rahmen
+des Raumes und der darin befindlichen Türen separat gespeichert werden.
+Damit die Algorithmen zur Analyse und Verarbeitung korrekt funktionieren, müssen die Rahmen und Wände
+jeweils geschlossen sein und die Tür rechteckig im Bild vorhanden sein.
+Eine Beispieldatei liegt dem Programmcode bei.
+Es folgt eine Erklärung der einzelnen Schritte der Bildverarbeitung.
+
+\subsubsection{Bildeigenschaften}
+\label{Bildeigenschaften}
+
+Damit das Programm ein Bild überhaupt laden kann, muss es gewisse Eigenschaften aufzeigen.
+Es werden nur Bilder vom Typ \emph{Portable Network Graphics} (kurz: \emph{PNG}) akzeptiert.
+Diese dürfen nur die beiden Farbmodelle RGB oder RGB mit Alpha-Komponente enthalten.
+Eine solche Bilddatei wird mittels der Bibliothek \emph{DevIL} in den Programmspeicher geladen.
+
+Um eine Verarbeitung des Bildes im Kontext eines Raumplans zu ermöglichen, müssen die Wände und
+Rahmen von Hindernissen bzw. Objekten im Raum schwarz sein (RGB-Komponenten jeweils auf Minimum).
+Eine weiße Farbe (RGB-Komponenten auf Maximum) bedeutet, dass sich dieser Pixel des Bildes
+außerhalb des Raumes befindet.
+Die Farbe Grau (RGB-Komponenten auf 200 bei einer Skala von 0-255) bedeutet, dass dieser Pixel
+Teil einer Tür des Raumes ist.
+Dies ist im weiteren Verlauf notwendig, damit ohne weitere Algorithmen erkannt wird, wo sich eine
+Tür im Raum befindet, damit genau in der Mitte einer Tür ein Wegpunkt gesetzt werden kann.
+Jegliche andere Farbe bedeutet, dass sich dieser Pixel im Raum befindet.
+Somit ist es z.B. möglich den Boden des Raums einzufärben.
+
+\subsubsection{Rahmenpolygone des Raumes}
+Die Schnittstelle zum Modul der Bildverarbeitung bietet nun eine Funktion, um das Rahmenpolygon
+des Raumes, sowie der darin befindlichen Objekte und der Türen zu erhalten.
+Im 1. Schritt wird eine Abbildung erzeugt, welche für jede Koordinate im Bild speichert,
+welche Position sie im Raum entspricht (Im Raum, Außerhalb des Raumes, Tür oder Wand).
+Dann wird für jeden Pixel, der zu einer Tür oder sich im Inneren des Raumes befindet geprüft,
+ob sich in der nähe eine Wand befindet.
+Dazu wird geprüft, ob sich innerhalb des Radius des Roboters eine Wand befindet, falls ja, wird
+dieser Pixel aus der Menge der zu betrachtenden Knoten entfernt.
+Der letzte Schritt umfasst das Expandieren der noch zu betrachtenden Pixel.
+
+Jeder Pixel, der noch zu einer Tür oder sich im Raum befindet und nicht mit einer Wand kollidiert,
+falls sich an dieser Raumposition der Roboter befindet, wird nun expandiert.
+Das Expandieren bedeutet, dass von der betrachtenden Position in eine Richtung gewandert wird und
+geprüft wird, ob sich dort ein Nachbarpixel befindet der ebenfalls den gleichen Typ repräsentiert
+(Tür oder Innenseite des Raumes).
+Falls nicht wird die Richtung geändert, in der die Pixel betrachtet werden.
+Genau dieser Pixel, an dem die Richtung geändert wird, ist somit ein Eckpunkt eines Polygons.
+Befindet man sich Ende der betrachteten Pixel, so ist das Polygon geschlossen.
+Das Resultat dieser Schritte ist eine Liste von Polygon, die man als Begrenzungen (\emph{Constraints})
+des Raumes auffassen kann.
+
+Diese Liste ist hilfreich um zu prüfen, ob Wegpunkte innerhalb des Raumes sind oder um sie dort
+statistisch zu verteilen.
+Weiterhin werden die Kanten der Raumpolygone benötigt, um zu prüfen, ob der berechnete Pfad mit einem
+Objekt im Raum oder einer Wand kollidiert.
+
+\subsection{Bedienoberfläche}
+\ref{Bedienoberfläche}
+
+Das GUI wurde mit dem Framework Qt in der Vorabversion 5.4 entwickelt.
+Zunächst wurde mit der stabilen Version 4.8 programmiert, was sich später jedoch als nicht weiter
+durchführbar herausstellte, da für das Visualisieren des Roboters eine Komponente (\emph{QOpenGLWidget})
+benötigt wurde, welche erst in der Vorarbversion verfügbar war.
+
+Wurde ein Bild über die Menüoption \emph{Project -> Load Room} geladen, welches die geforderten
+Bildeigenschaften \ref{Bildeigenschaften} erfüllt, so wird die linke Spalte etwas schmaler und auf
+der rechten Seite erscheint das Bild des Raumes.
+Für das geladene Bild wird zufällig ein Start- und Zielpunkt für den Roboter gewählt, welcher
+sich im Raum befindet.
+Die generierten Start- und Zielpunkte werden entsprechend grün und rot in der Szene als runder
+Kreis gemalt.
+
+Auf der linken Seite befinden sich Bedienelemente für die Szene:
+\begin{itemize}
+\item Optionen zur Modifizierung von Wegpunkten
+\item Auswahlkästchen zur Anzeige von Überprüfungshilfen
+\item Ein Knopf zum Animieren des Roboters
+\item Auswahlkästchen zur Wahl des Algorithmus zum Berechnen des Pfades
+\item Ein Textkästchen für Statusnachrichten
+\item Ein Textkästchen für Hilfestellungen
+\end{itemize}
+
+Derzeit steht an Algorithmen zur Pfadberechnung der Dijkstra- und A*-Algorithmus
+(siehe Grundlagenkapitel \ref{Grundlagen}) zur Auswahl.
+Das Textkästchen für Hilfestellungen gibt eine Kurzhilfe, wenn die Maus über eines der Elemente
+der linken Spalte schwebt.
+Das Textkästchen für Statusnachrichten wird zur Programmlaufzeit Text enthalten, welcher
+insbesondere Fehler beschreibt.
+Die Statusnachrichten bleiben bis zur nächsten Statusnachricht enthalten, Hilfestellungen
+verschwinden beim Verlassen der entsprechenden Schwebefläche mit der Maus.
+
+\subsubsection{Modifizieren von Wegpunkten}
+
+Es ist möglich Wegpunkte interaktiv im Raum zu verteilen.
+Dazu muss entsprechend in der linken Spalte eine entsprechende Wegpunkt-Option ausgewählt werden
+und im Raum mit der linken Maustaste geklickt werden.
+Das Programm fängt den Mausklick ab und überprüft, welches Auswahlkästchen gerade gesetzt ist
+und führt die entsprechende Operation durch.
+Sollten sich Wegpunkte überlappen bzw. wird versucht Wegpunkte zu löschen, die nicht vorhanden sind,
+wird eine Fehlermeldung als Statusnachricht ausgegeben.
+Startpunkt und Endpunkt können ebenfalls über diese Methode gesetzt werden.
+Gleich zu Beginn, also nach dem Laden des Bildes, werden Wegpunkte in der Mitte von Türen erzeugt.
+Die aktuelle Anzahl von Wegpunkten befindet sich rechts neben der Kennzeichnung \emph{Amount of nodes}.
+
+Dieses Kästchen hat eine weitere Eigenschaft.
+Wird dort eine Zahl eingegeben, so werden statistisch Wegpunkte im Raum verteilt.
+Dieses Vorgehen löscht alle vorher gesetzten Wegpunkte.
+Wegpunkte in der Mitte der Türen bleiben erhalten, somit kann die Zahl die in dem Feld erscheint höher
+sein, als jene die eingegeben wurde.
+Sollten die Wegpunkte der Türen nicht gewünscht sein, müssen sie interaktiv gelöscht werden.
+
+\subsubsection{Einstellungen und Überprüfungen der Szene}
+
+Unter den Modifizierungen befinden sich Optionen, die die Ausgabe der Szene beeinflussen.
+Die erste Option \emph{Show triangulation} zeigt eine Triangulierung der Wegpunkte, inklusive
+des Start- und Endpunkts.
+Diese wird in einer hellblauen Farbe in der Szene angezeigt.
+Die Option \emph{Show room triangulation} sorgt dafür, dass die komplette Triangulierung der Rahmenpolygone, die
+zuvor ermittelt wurden, in einer etwas helleren blauen Farbe in der Szene erscheint.
+Je nach Komplexität des Raumes kann dies das Zeichnen von vielen Linien nach sich ziehen, wodurch diese
+Option ausschließlich zu Testzwecken genutzt werden sollte.
+Möchte man Wegpunkte oder den generierten Pfad angezeigt bekommen, so setzt man einen Haken in die entsprechende
+Optionen \emph{Show waypoints} oder \emph{Show path}.
+Die Wegpunkte werden als gelbe Punkte in der gleichen Größe wie Start- und Zielpunkt gezeichnet.
+Eine letzte Option \emph{Show neighbours} dient dazu, sich die Nachbarn von Wegpunkten anzeigen zu lassen und
+zusätzlich darstellen zu lassen, ob eine direkte Verbindung zum Nachbarn mit einem Raumobjekt oder einer Wand
+kollidiert.
+Um diese Funktion nutzen zu können, müssen die Auswahlkästchen in den Modifizierungen (oben) alle leer sein.
+Ein Mausklick auf einen bereits hinzugefügten Wegpunkt hat nun zur Folge, dass Linien zu den direkten Nachbarn
+gezeichnet werden.
+Grüne Linien bedeuten, dass diese Nachbarn nicht mit Objekten kollidieren.
+Rote Linien verlaufen durch Objekte oder Wände.
+
+\subsection{Szene}
+
+Die Szene dient zur Veranschaulichung und zum Testen der entwickelten Lösung.
+In der Szene wird das Bild des Raumes als Hintergrund (Textur) hinterlegt, worauf dann verschiedene Zeichnungen
+durchgeführt werden.
+Dargestellt wird immer mindestens ein Start- und Endpunkt.
+Zusätzliche Einblendungen können über die Bedienoberfläche \ref{Bedienoberfläche} vorgenommen werden.
+
+\subsection{Wegfindung}
+
+Um diese Polygone zu ermitteln, wird eine \emph{Constrained Delaunay Triangulation} (kurz: \emph{CDT})
+verwendet.
+Bei einer Constrained Delaunay Triangulation 
+
+\section{Handbuch zur Graphischen Bedienoberfläche}
+
+\section{Probleme und Ausblick}
+
+\section{Persönliches Fazit}
+
+\section{Quellen}
+
+\end{document}
