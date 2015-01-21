@@ -154,14 +154,8 @@ void CentralWidget::wantsRoomLoaded()
 
 	drawing_ = new Drawing(statusText_, helpText_);
 	drawing_->fromImage(filename.toStdString().c_str());
-	drawWidget_ = new DrawWidget(drawing_, this);
-	amountField_->setText(QString::number(drawing_->countWaypoints()));
-	connect(drawWidget_, SIGNAL(mouseClicked()), this, SLOT(sceneCouldChange()));
-	static_cast<QHBoxLayout *>(layout())->addWidget(drawWidget_, 1);
 
-	for (std::map<int, bool>::const_iterator i = showOptions_.begin(); i != showOptions_.end(); i++) {
-		drawing_->setOption(static_cast<Drawing::Option>(i->first), i->second);
-	}
+	createDrawWidget();
 }
 
 void CentralWidget::wantsProjectLoaded()
@@ -239,14 +233,7 @@ void CentralWidget::wantsProjectLoaded()
 		delete drawing_;
 		drawing_ = 0;
 	} else {
-		drawWidget_ = new DrawWidget(drawing_, this);
-		amountField_->setText(QString::number(drawing_->countWaypoints()));
-		connect(drawWidget_, SIGNAL(mouseClicked()), this, SLOT(sceneCouldChange()));
-		static_cast<QHBoxLayout *>(layout())->addWidget(drawWidget_, 1);
-
-		for (std::map<int, bool>::const_iterator i = showOptions_.begin(); i != showOptions_.end(); i++) {
-			drawing_->setOption(static_cast<Drawing::Option>(i->first), i->second);
-		}
+		createDrawWidget();
 	}
 }
 
@@ -310,6 +297,7 @@ void CentralWidget::checkBoxChanged(int state)
 	if (sender == boxAdd_ || sender == boxDel_ ||
 	    sender == boxStart_ || sender == boxEnd_) {
 		if (state != Qt::Checked) {
+			drawing_->setWaypointModification(Drawing::WaypointNoMod);
 			return;
 		}
 
@@ -364,7 +352,6 @@ void CentralWidget::checkBoxChanged(int state)
 		option = Drawing::ShowNeighbours;
 	}
 
-	showOptions_[option] = state == Qt::Checked;
 	drawing_->setOption(option, state == Qt::Checked);
 }
 
@@ -412,6 +399,25 @@ void CentralWidget::removeRoom()
 
 	delete drawing_;
 	drawing_ = 0;
+}
+
+void CentralWidget::createDrawWidget()
+{
+	drawWidget_ = new DrawWidget(drawing_, this);
+	amountField_->setText(QString::number(drawing_->countWaypoints()));
+	connect(drawWidget_, SIGNAL(mouseClicked()), this, SLOT(sceneCouldChange()));
+	static_cast<QHBoxLayout *>(layout())->addWidget(drawWidget_, 1);
+
+	boxAdd_->setCheckState(Qt::Unchecked);
+	boxDel_->setCheckState(Qt::Unchecked);
+	boxStart_->setCheckState(Qt::Unchecked);
+	boxEnd_->setCheckState(Qt::Unchecked);
+
+	boxShowTri_->setCheckState(drawing_->getOption(Drawing::ShowTriangulation) ? Qt::Checked : Qt::Unchecked);
+	boxShowRoomTri_->setCheckState(drawing_->getOption(Drawing::ShowRoomTriangulation) ? Qt::Checked : Qt::Unchecked);
+	boxShowWay_->setCheckState(drawing_->getOption(Drawing::ShowWaypoints) ? Qt::Checked : Qt::Unchecked);
+	boxShowPath_->setCheckState(drawing_->getOption(Drawing::ShowPath) ? Qt::Checked : Qt::Unchecked);
+	boxShowNeighbours_->setCheckState(drawing_->getOption(Drawing::ShowNeighbours) ? Qt::Checked : Qt::Unchecked);
 }
 
 bool CentralWidget::checkBoxEvent(QObject *object, QEvent *event)

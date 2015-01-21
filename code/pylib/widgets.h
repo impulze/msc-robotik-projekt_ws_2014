@@ -54,6 +54,7 @@ private Q_SLOTS:
 
 private:
 	void removeRoom();
+	void createDrawWidget();
 	bool checkBoxEvent(QObject *object, QEvent *event);
 
 private:

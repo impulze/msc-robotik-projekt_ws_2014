@@ -43,6 +43,7 @@ public:
 	void setNodes(int amount);
 	void setWaypointModification(WaypointModification modification);
 	void setOption(Option option, bool enabled);
+	bool getOption(Option option) const;
 	void mouseClick(int x, int y);
 
 	std::size_t countWaypoints() const;

@@ -63,6 +63,7 @@ public:
 	void setNodes(int amount);
 	void setWaypointModification(Drawing::WaypointModification modification);
 	void setOption(Drawing::Option option, bool enabled);
+	bool getOption(Drawing::Option option) const;
 	void mouseClick(int x, int y);
 
 	std::size_t countWaypoints() const;
@@ -154,7 +155,7 @@ void Drawing::DrawingImpl::updateRoom()
 		std::reverse(path.begin(), path.end());
 	}
 
-	pathPoints = catmullRom(path, 50);
+	pathPoints = catmullRom(path, 100);
 
 	pathCollisions.clear();
 
@@ -189,6 +190,11 @@ void Drawing::DrawingImpl::setOption(Drawing::Option option, bool enabled)
 			show_[option] = enabled;
 			break;
 	}
+}
+
+bool Drawing::DrawingImpl::getOption(Drawing::Option option) const
+{
+	return show_[option];
 }
 
 void Drawing::DrawingImpl::mouseClick(int x, int y)
@@ -238,17 +244,16 @@ void Drawing::DrawingImpl::mouseClick(int x, int y)
 			break;
 		
 		default:
+			if (show_[ShowNeighbours]) {
+				Coord2D coord;
+
+				if (!getCoordFromMouseClick(x, y, coord)) {
+					return;
+				}
+
+				showNeighbours(coord);
+			}
 			break;
-	}
-
-	if (show_[ShowNeighbours]) {
-		Coord2D coord;
-
-		if (!getCoordFromMouseClick(x, y, coord)) {
-			return;
-		}
-
-		showNeighbours(coord);
 	}
 
 	if (changed) {
@@ -486,7 +491,7 @@ void Drawing::DrawingImpl::paint()
 	}
 
 	if (animated) {
-		glColor3f(0.73f, 0.56f, 0.56f);
+		glColor3f(0.63f, 0.13f, 0.94f);
 		drawPoint(animationPosition->x, animationPosition->y);
 	}
 
@@ -753,6 +758,11 @@ void Drawing::setWaypointModification(WaypointModification modification)
 void Drawing::setOption(Option option, bool enabled)
 {
 	p->setOption(option, enabled);
+}
+
+bool Drawing::getOption(Option option) const
+{
+	return p->getOption(option);
 }
 
 void Drawing::mouseClick(int x, int y)
