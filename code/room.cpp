@@ -1,6 +1,7 @@
 #include "algo.h"
 #include "room.h"
 #include "roomimage.h"
+#include "stats.h"
 #include "triangulation.h"
 
 #include <set>
@@ -9,6 +10,7 @@
 #include <cmath>
 #include <cstdlib>
 
+#include <QtCore/QElapsedTimer>
 #include <QtCore/QXmlStreamReader>
 #include <QtCore/QXmlStreamWriter>
 #include <QtWidgets/QTextEdit>
@@ -42,10 +44,11 @@ long randomAtMost(long max)
 
 struct Room::RoomImpl
 {
-	RoomImpl(std::string const &filename, unsigned char distance, QTextEdit *statusText, QTextEdit *helpText)
+	RoomImpl(std::string const &filename, unsigned char distance, Stats *stats, QTextEdit *statusText, QTextEdit *helpText)
 		: image(new RoomImage(filename)),
 		  statusText_(statusText),
-		  helpText_(helpText)
+		  helpText_(helpText),
+		  stats(stats)
 	{
 		bytes = image->data().data();
 		width = image->width();
@@ -61,6 +64,9 @@ struct Room::RoomImpl
 
 		// this array doesn't distinguish between big room and holes
 		//std::vector<Edge> constraints = roomTriangulation.getConstrainedEdges();
+
+		QElapsedTimer timer;
+		timer.start();
 
 		for (std::vector<Polygon2D>::const_iterator it = borderPolygons.begin();
 		     it != borderPolygons.end();
@@ -78,6 +84,7 @@ struct Room::RoomImpl
 			roomTriangulation.insertConstraints(points);
 		}
 
+		stats->lastRoomTriangulationCalculation = timer.elapsed();
 
 		for (std::vector<Polygon2D>::const_iterator it = borderPolygons.begin();
 		     it != borderPolygons.end();
@@ -146,6 +153,7 @@ struct Room::RoomImpl
 	QTextEdit *statusText_;
 	QTextEdit *helpText_;
 	std::vector<Polygon2D> doorPolygons_;
+	Stats *stats;
 
 	bool insert(Coord2D const &coord)
 	{
@@ -537,8 +545,8 @@ struct Room::RoomImpl
 
 
 
-Room::Room(std::string const &filename, unsigned char distance, QTextEdit *statusText, QTextEdit *helpText)
-	: p(new RoomImpl(filename, distance, statusText, helpText))
+Room::Room(std::string const &filename, unsigned char distance, Stats *stats, QTextEdit *statusText, QTextEdit *helpText)
+	: p(new RoomImpl(filename, distance, stats, statusText, helpText))
 {
 }
 

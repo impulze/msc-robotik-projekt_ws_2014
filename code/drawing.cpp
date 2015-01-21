@@ -5,8 +5,10 @@
 #include "drawing.h"
 #include "room.h"
 #include "roomimage.h"
+#include "stats.h"
 #include "texture.h"
 
+#include <QtCore/QElapsedTimer>
 #include <QtCore/QTimer>
 
 #include <GL/gl.h>
@@ -53,7 +55,7 @@ void throwErrorFromGLError()
 class Drawing::DrawingImpl
 {
 public:
-	DrawingImpl(Drawing *parent, QTextEdit *statusText, QTextEdit *helpText);
+	DrawingImpl(Drawing *parent, Stats *stats, QTextEdit *statusText, QTextEdit *helpText);
 	~DrawingImpl();
 
 	void fromImage(const char *name);
@@ -106,16 +108,18 @@ public:
 	bool animated;
 	std::vector< Coord2DTemplate<float> > animationPoints;
 	std::vector< Coord2DTemplate<float> >::const_iterator animationPosition;
+	Stats *stats;
 };
 
-Drawing::DrawingImpl::DrawingImpl(Drawing *parent, QTextEdit *statusText, QTextEdit *helpText)
+Drawing::DrawingImpl::DrawingImpl(Drawing *parent, Stats *stats, QTextEdit *statusText, QTextEdit *helpText)
 	: waypointModification(Drawing::WaypointNoMod),
 	  room(0),
 	  texture(0),
 	  statusText_(statusText),
 	  helpText_(helpText),
 	  animationTimer(new QTimer(parent)),
-	  animated(false)
+	  animated(false),
+	  stats(stats)
 {
 	std::srand(std::time(0));
 
@@ -134,7 +138,7 @@ Drawing::DrawingImpl::~DrawingImpl()
 
 void Drawing::DrawingImpl::fromImage(const char *name)
 {
-	room = new Room(name, ROBOT_DIAMETER, statusText_, helpText_);
+	room = new Room(name, ROBOT_DIAMETER, stats, statusText_, helpText_);
 
 	if (room->image().width() > static_cast<unsigned int>(std::numeric_limits<int>::max()) ||
 	    room->image().height() > static_cast<unsigned int>(std::numeric_limits<int>::min())) {
@@ -148,28 +152,49 @@ void Drawing::DrawingImpl::fromImage(const char *name)
 
 void Drawing::DrawingImpl::updateRoom()
 {
+	QElapsedTimer timer;
+
 	triangulation = room->getTriangulation();
+
+	timer.start();
+
 	path = room->generatePath();
 
 	if (path.begin()->x > path.rbegin()->x) {
 		std::reverse(path.begin(), path.end());
 	}
 
+	stats->lastPathCalculation = timer.elapsed();
+
+	timer.start();
+
 	pathPoints = catmullRom(path, 150);
 
+	stats->lastCatmullRomCalculation = timer.elapsed();
+
 	pathCollisions.clear();
+
+	timer.start();
 
 	for (std::vector< Coord2DTemplate<float> >::const_iterator it = pathPoints.begin(); it != pathPoints.end(); ++it) {
 		if (!room->pointInside(it->x, it->y)) {
 			pathCollisions.insert(*it);
 		}
 	}
+
+	stats->lastPathCollisionCalculation = timer.elapsed();
 }
 
 void Drawing::DrawingImpl::setNodes(int amount)
 {
 	room->clearWaypoints();
+
+	QElapsedTimer timer;
+	timer.start();
+
 	room->setNodes(amount);
+
+	stats->lastSetNodes = timer.elapsed();
 
 	updateRoom();
 }
@@ -739,8 +764,8 @@ void Drawing::DrawingImpl::animationForward()
 	++animationPosition;
 }
 
-Drawing::Drawing(QTextEdit *statusText, QTextEdit *helpText)
-	: p(new DrawingImpl(this, statusText, helpText))
+Drawing::Drawing(Stats *stats, QTextEdit *statusText, QTextEdit *helpText)
+	: p(new DrawingImpl(this, stats, statusText, helpText))
 {
 }
 

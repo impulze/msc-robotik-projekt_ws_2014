@@ -14,11 +14,12 @@ class QTextEdit;
 class QXmlStreamReader;
 class QXmlStreamWriter;
 class RoomImage;
+class Stats;
 
 class Room
 {
 public:
-	Room(std::string const &filename, unsigned char distance, QTextEdit *statusText, QTextEdit *helpText);
+	Room(std::string const &filename, unsigned char distance, Stats *stats, QTextEdit *statusText, QTextEdit *helpText);
 	~Room();
 
 	RoomImage const &image() const;

@@ -9,6 +9,7 @@ class QTextEdit;
 class QXmlStreamReader;
 class QXmlStreamWriter;
 class Room;
+class Stats;
 class Texture;
 
 class Drawing
@@ -17,7 +18,7 @@ class Drawing
 	Q_OBJECT
 
 public:
-	Drawing(QTextEdit *statusText, QTextEdit *helpText);
+	Drawing(Stats *stats, QTextEdit *statusText, QTextEdit *helpText);
 	~Drawing();
 
 	enum WaypointModification

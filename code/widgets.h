@@ -1,8 +1,6 @@
 #ifndef ROB_WIDGETS_H_INCLUDED
 #define ROB_WIDGETS_H_INCLUDED
 
-#include <map>
-
 #include <QtWidgets/QMainWindow>
 
 class Drawing;
@@ -13,6 +11,7 @@ class QPushButton;
 class QTextEdit;
 class QXmlStreamReader;
 class QXmlStreamWriter;
+class Stats;
 
 class MainWindow
 	: public QMainWindow
@@ -55,6 +54,7 @@ private Q_SLOTS:
 private:
 	void removeRoom();
 	void createDrawWidget();
+	void createNewDrawing();
 	bool checkBoxEvent(QObject *object, QEvent *event);
 
 private:
@@ -71,9 +71,10 @@ private:
 	QCheckBox *boxShowPath_;
 	QCheckBox *boxShowNeighbours_;
 	QPushButton *buttonAnimate_;
+	QPushButton *buttonStats_;
 	QTextEdit *statusText_;
 	QTextEdit *helpText_;
-	std::map<int, bool> showOptions_;
+	Stats *stats_;
 
 	friend class CheckBoxEventFilter;
 };

@@ -1,5 +1,6 @@
 #include "drawing.h"
 #include "drawwidget.h"
+#include "stats.h"
 #include "widgets.h"
 
 #include <QtCore/QXmlStreamReader>
@@ -9,16 +10,64 @@
 #include <QtWidgets/QCheckBox>
 #include <QtWidgets/QDialogButtonBox>
 #include <QtWidgets/QFileDialog>
+#include <QtWidgets/QHeaderView>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QLayout>
 #include <QtWidgets/QLineEdit>
 #include <QtWidgets/QMenuBar>
 #include <QtWidgets/QPushButton>
+#include <QtWidgets/QTableWidget>
 #include <QtWidgets/QTextEdit>
 
 #include <vector>
 
 #include <assert.h>
+
+namespace
+{
+	QString secondsString(uint64_t msec);
+
+	QString secondsString(uint64_t msec)
+	{
+#if 0
+		if (nsec > 60 * 1000 * 1000) {
+			uint64_t mins = nsec / (60 * 1000 * 1000);
+			uint64_t _nsec = nsec - mins * (60 * 1000 * 1000);
+			uint64_t secs = _nsec / (1000 * 1000);
+			_nsec = _nsec - secs * (1000 * 1000);
+			uint64_t msec = _nsec / 1000;
+			_nsec = _nsec - msec * 1000;
+			return QString::number(mins) + " m " + QString::number(secs) + " s " + QString::number(msec) + " ms " + QString::number(_nsec) + " ns";
+		} else if (nsec > 1000 * 1000) {
+			uint64_t secs = nsec / (1000 * 1000);
+			uint64_t _nsec = nsec - secs * (1000 * 1000);
+			uint64_t msec = _nsec / 1000;
+			_nsec = _nsec - msec * 1000;
+			return QString::number(secs) + " s " + QString::number(msec) + " ms " + QString::number(_nsec) + " ns";
+		} else if (nsec > 1000) {
+			uint64_t msec = nsec / 1000;
+			uint64_t _nsec = nsec % 1000;
+			return QString::number(msec) + " ms " + QString::number(_nsec) + " ns";
+		} else {
+			return QString::number(nsec) + " ns";
+		}
+#else
+		if (msec > 60 * 1000) {
+			uint64_t mins = msec / (60 * 1000);
+			uint64_t _msec = msec - mins * (60 * 1000);
+			uint64_t secs = _msec / 1000;
+			_msec = _msec - secs * 1000;
+			return QString::number(mins) + " m " + QString::number(secs) + " s " + QString::number(_msec) + " ms";
+		} else if (msec > 1000) {
+			uint64_t secs = msec / 1000;
+			uint64_t _msec = msec % 1000;
+			return QString::number(secs) + " s " + QString::number(_msec) + " ms";
+		} else {
+			return QString::number(msec) + " ms";
+		}
+#endif
+	}
+}
 
 MainWindow::MainWindow(QWidget *parent)
 	: QMainWindow(parent)
@@ -47,7 +96,8 @@ MainWindow::MainWindow(QWidget *parent)
 CentralWidget::CentralWidget(QWidget *parent)
 	: QWidget(parent),
 	  drawing_(0),
-	  drawWidget_(0)
+	  drawWidget_(0),
+	  stats_(0)
 {
 	QLabel *statusLabel = new QLabel(tr("Status"));
 	statusText_ = new QTextEdit(this);
@@ -71,6 +121,7 @@ CentralWidget::CentralWidget(QWidget *parent)
 	boxShowPath_ = new QCheckBox(tr("Show path"), this);
 	boxShowNeighbours_ = new QCheckBox(tr("Show neighbours"), this);
 	buttonAnimate_ = new QPushButton(tr("Animate"), this);
+	buttonStats_ = new QPushButton(tr("Statistics"), this);
 
 	connect(boxAdd_, SIGNAL(stateChanged(int)), this, SLOT(checkBoxChanged(int)));
 	connect(boxDel_, SIGNAL(stateChanged(int)), this, SLOT(checkBoxChanged(int)));
@@ -82,6 +133,7 @@ CentralWidget::CentralWidget(QWidget *parent)
 	connect(boxShowPath_, SIGNAL(stateChanged(int)), this, SLOT(checkBoxChanged(int)));
 	connect(boxShowNeighbours_, SIGNAL(stateChanged(int)), this, SLOT(checkBoxChanged(int)));
 	connect(buttonAnimate_, SIGNAL(clicked()), this, SLOT(buttonClicked()));
+	connect(buttonStats_, SIGNAL(clicked()), this, SLOT(buttonClicked()));
 
 	QVBoxLayout *sideLayout = new QVBoxLayout;
 	QLayout *amountLayout = new QHBoxLayout;
@@ -102,6 +154,7 @@ CentralWidget::CentralWidget(QWidget *parent)
 	sideLayout->addWidget(boxShowPath_);
 	sideLayout->addWidget(boxShowNeighbours_);
 	sideLayout->addWidget(buttonAnimate_);
+	sideLayout->addWidget(buttonStats_);
 	QFrame *line2 = new QFrame(this);
 	line2->setFrameShape(QFrame::HLine);
 	line2->setFrameShadow(QFrame::Sunken);
@@ -120,9 +173,7 @@ CentralWidget::CentralWidget(QWidget *parent)
 	mainLayout->addLayout(sideLayout);
 
 	boxShowWay_->setCheckState(Qt::Checked);
-	showOptions_[Drawing::ShowWaypoints] = true;
 	boxShowPath_->setCheckState(Qt::Checked);
-	showOptions_[Drawing::ShowPath] = true;
 
 	CheckBoxEventFilter *filter = new CheckBoxEventFilter(this);
 	boxAdd_->installEventFilter(filter);
@@ -140,6 +191,7 @@ CentralWidget::~CentralWidget()
 {
 	delete drawWidget_;
 	delete drawing_;
+	delete stats_;
 }
 
 void CentralWidget::wantsRoomLoaded()
@@ -152,7 +204,8 @@ void CentralWidget::wantsRoomLoaded()
 
 	removeRoom();
 
-	drawing_ = new Drawing(statusText_, helpText_);
+	createNewDrawing();
+
 	drawing_->fromImage(filename.toStdString().c_str());
 
 	createDrawWidget();
@@ -173,7 +226,7 @@ void CentralWidget::wantsProjectLoaded()
 
 	QXmlStreamReader reader(&loadFile);
 
-	drawing_ = new Drawing(statusText_, helpText_);
+	createNewDrawing();
 
 	QString errorString;
 
@@ -365,6 +418,74 @@ void CentralWidget::buttonClicked()
 
 	if (sender == buttonAnimate_) {
 		drawing_->animate();
+	} else if (sender == buttonStats_) {
+		QDialog *statsDialog(new QDialog(this));
+		statsDialog->setWindowTitle("Statistics");
+		QVBoxLayout *layout = new QVBoxLayout(statsDialog);
+		QDialogButtonBox *buttons = new QDialogButtonBox(QDialogButtonBox::Ok, Qt::Horizontal, statsDialog);
+
+		connect(buttons, SIGNAL(accepted()), statsDialog, SLOT(accept()));
+
+		QTableWidget *table = new QTableWidget(statsDialog);
+		table->verticalHeader()->hide();
+		table->horizontalHeader()->hide();
+		table->setRowCount(5);
+		table->setColumnCount(2);
+
+		unsigned int width = 0;
+		unsigned int height = 0;
+
+		QTableWidgetItem *item;
+
+		item = new QTableWidgetItem(tr("Last path calculation:"));
+		table->setItem(0, 0, item);
+
+		item = new QTableWidgetItem(secondsString(stats_->lastPathCalculation));
+		table->setItem(0, 1, item);
+
+		item = new QTableWidgetItem(tr("Last path collision calculation:"));
+		table->setItem(1, 0, item);
+
+		item = new QTableWidgetItem(secondsString(stats_->lastPathCollisionCalculation));
+		table->setItem(1, 1, item);
+
+		item = new QTableWidgetItem(tr("Last Catmull Rom calculation:"));
+		table->setItem(2, 0, item);
+
+		item = new QTableWidgetItem(secondsString(stats_->lastCatmullRomCalculation));
+		table->setItem(2, 1, item);
+
+		item = new QTableWidgetItem(tr("Last random placement of waypoints:"));
+		table->setItem(3, 0, item);
+
+		item = new QTableWidgetItem(secondsString(stats_->lastSetNodes));
+		table->setItem(3, 1, item);
+
+		item = new QTableWidgetItem(tr("Last room triangulation calculation:"));
+		table->setItem(4, 0, item);
+
+		item = new QTableWidgetItem(secondsString(stats_->lastRoomTriangulationCalculation));
+		table->setItem(4, 1, item);
+
+		table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+		table->resizeRowsToContents();
+		table->resizeColumnsToContents();
+
+		for (int i = 0; i < table->rowCount(); i++) {
+			height += table->rowHeight(i);
+		}
+
+		for (int j = 0; j < table->columnCount(); j++) {
+			width += table->columnWidth(j);
+		}
+
+		layout->addWidget(table);
+		layout->addWidget(buttons);
+
+		statsDialog->setMinimumSize(width + 30, height + 120);
+		statsDialog->exec();
+		delete statsDialog;
+
 	}
 }
 
@@ -418,6 +539,14 @@ void CentralWidget::createDrawWidget()
 	boxShowWay_->setCheckState(drawing_->getOption(Drawing::ShowWaypoints) ? Qt::Checked : Qt::Unchecked);
 	boxShowPath_->setCheckState(drawing_->getOption(Drawing::ShowPath) ? Qt::Checked : Qt::Unchecked);
 	boxShowNeighbours_->setCheckState(drawing_->getOption(Drawing::ShowNeighbours) ? Qt::Checked : Qt::Unchecked);
+}
+
+void CentralWidget::createNewDrawing()
+{
+	delete stats_;
+	stats_ = new Stats();
+
+	drawing_ = new Drawing(stats_, statusText_, helpText_);
 }
 
 bool CentralWidget::checkBoxEvent(QObject *object, QEvent *event)
