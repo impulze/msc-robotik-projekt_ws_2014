@@ -22,10 +22,10 @@
 
 #include <QtCore/QXmlStreamReader>
 #include <QtCore/QXmlStreamWriter>
+#include <QtWidgets/QTextEdit>
 
 #if MEASURE
 #include <sys/time.h>
-#include <cstdio>
 #endif
 
 #define ROBOT_DIAMETER 5
@@ -51,7 +51,7 @@ void throwErrorFromGLError()
 class Drawing::DrawingImpl
 {
 public:
-	DrawingImpl();
+	DrawingImpl(QTextEdit *statusText, QTextEdit *helpText);
 	~DrawingImpl();
 
 	void fromImage(const char *name);
@@ -93,12 +93,16 @@ public:
 	Coord2D neighbourToShow;
 	// mapping of a coord and intersection value
 	std::map<Coord2D, bool> neighbourToShowNeighbours;
+	QTextEdit *statusText_;
+	QTextEdit *helpText_;
 };
 
-Drawing::DrawingImpl::DrawingImpl()
+Drawing::DrawingImpl::DrawingImpl(QTextEdit *statusText, QTextEdit *helpText)
 	: waypointModification(Drawing::WaypointNoMod),
 	  room(0),
-	  texture(0)
+	  texture(0),
+	  statusText_(statusText),
+	  helpText_(helpText)
 {
 	std::srand(std::time(0));
 
@@ -115,11 +119,12 @@ Drawing::DrawingImpl::~DrawingImpl()
 
 void Drawing::DrawingImpl::fromImage(const char *name)
 {
-	room = new Room(name, ROBOT_DIAMETER);
+	room = new Room(name, ROBOT_DIAMETER, statusText_, helpText_);
 
 	if (room->image().width() > static_cast<unsigned int>(std::numeric_limits<int>::max()) ||
 	    room->image().height() > static_cast<unsigned int>(std::numeric_limits<int>::min())) {
 		delete room;
+		statusText_->setText(statusText_->tr("OpenGL cannot draw this texture."));
 		throw std::runtime_error("OpenGL cannot draw this texture.");
 	}
 
@@ -469,7 +474,7 @@ void Drawing::DrawingImpl::paint()
 #if MEASURE
 	struct timeval sec; gettimeofday(&sec, NULL);
 	struct timeval res; timersub(&sec, &fir, &res);
-	std::printf("rendering: %lu sec %lu usec\n", res.tv_sec, res.tv_usec);
+	statusText_->setText(statusText_->tr("rendering: %1 sec %2 usec\n").arg(res.tv_sec).arg(res.tv_usec));
 #endif
 }
 
@@ -566,14 +571,6 @@ void Drawing::DrawingImpl::showNeighbours(Coord2D const &coord)
 				}
 			} else {
 				neighbourToShowNeighbours.clear();
-			}
-
-			for (std::set<Coord2D>::const_iterator cit = it->second.begin(); cit != it->second.end(); cit++) {
-				Coord2D thatCoord(cit->x, cit->y);
-
-				double xDistance = static_cast<double>(thatCoord.x) - thisCoord.x;
-				double yDistance = static_cast<double>(thatCoord.y) - thisCoord.y;
-				double distance = std::sqrt(xDistance * xDistance + yDistance * yDistance);
 			}
 		}
 	}
@@ -678,8 +675,8 @@ bool Drawing::DrawingImpl::saveProject(QXmlStreamWriter *writer) const
 	return !writer->hasError();
 }
 
-Drawing::Drawing()
-	: p(new DrawingImpl)
+Drawing::Drawing(QTextEdit *statusText, QTextEdit *helpText)
+	: p(new DrawingImpl(statusText, helpText))
 {
 }
 

@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+class QTextEdit;
 class QXmlStreamReader;
 class QXmlStreamWriter;
 class RoomImage;
@@ -17,7 +18,7 @@ class RoomImage;
 class Room
 {
 public:
-	Room(std::string const &filename, unsigned char distance);
+	Room(std::string const &filename, unsigned char distance, QTextEdit *statusText, QTextEdit *helpText);
 	~Room();
 
 	RoomImage const &image() const;

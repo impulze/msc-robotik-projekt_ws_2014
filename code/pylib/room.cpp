@@ -7,11 +7,11 @@
 
 #include <cassert>
 #include <cmath>
-#include <cstdio>
 #include <cstdlib>
 
 #include <QtCore/QXmlStreamReader>
 #include <QtCore/QXmlStreamWriter>
+#include <QtWidgets/QTextEdit>
 
 namespace
 {
@@ -42,8 +42,10 @@ long randomAtMost(long max)
 
 struct Room::RoomImpl
 {
-	RoomImpl(std::string const &filename, unsigned char distance)
-		: image(new RoomImage(filename))
+	RoomImpl(std::string const &filename, unsigned char distance, QTextEdit *statusText, QTextEdit *helpText)
+		: image(new RoomImage(filename)),
+		  statusText_(statusText),
+		  helpText_(helpText)
 	{
 		bytes = image->data().data();
 		width = image->width();
@@ -165,21 +167,23 @@ struct Room::RoomImpl
 	Coord2D endpoint;
 	std::vector< std::vector<Edge> > edges;
 	std::set<Coord2D> waypoints;
+	QTextEdit *statusText_;
+	QTextEdit *helpText_;
 
 	bool insert(Coord2D const &coord)
 	{
 		if (coord == startpoint || coord == endpoint) {
-			std::fprintf(stderr, "Waypoint (%d/%d) is startpoint or endpoint, can't insert.\n", coord.x, coord.y);
+			statusText_->setText(statusText_->tr("Waypoint (%1/%2) is startpoint or endpoint, can't insert.\n").arg(coord.x).arg(coord.y));
 			return false;
 		}
 
 		if (triangulation.pointIsVertex(coord)) {
-			std::fprintf(stderr, "Waypoint (%d/%d) already inserted, can't insert.\n", coord.x, coord.y);
+			statusText_->setText(statusText_->tr("Waypoint (%1/%2) already inserted, can't insert.\n").arg(coord.x).arg(coord.y));
 			return false;
 		}
 
 		if (!roomTriangulation.inDomain(coord.x, coord.y)) {
-			std::fprintf(stderr, "Waypoint (%d/%d) outside domain, can't insert.\n", coord.x, coord.y);
+			statusText_->setText(statusText_->tr("Waypoint (%1/%2) outside domain, can't insert.\n").arg(coord.x).arg(coord.y));
 			return false;
 		}
 
@@ -193,12 +197,12 @@ struct Room::RoomImpl
 	bool remove(Coord2D const &coord)
 	{
 		if (coord == startpoint || coord == endpoint) {
-			std::fprintf(stderr, "Waypoint (%d/%d) is startpoint or endpoint, can't remove.\n", coord.x, coord.y);
+			statusText_->setText(statusText_->tr("Waypoint (%1/%2) is startpoint or endpoint, can't remove.\n").arg(coord.x).arg(coord.y));
 			return false;
 		}
 
 		if (!triangulation.pointIsVertex(coord)) {
-			std::fprintf(stderr, "Waypoint (%d/%d) not inserted, can't remove.\n", coord.x, coord.y);
+			statusText_->setText(statusText_->tr("Waypoint (%1/%2) not inserted, can't remove.\n").arg(coord.x).arg(coord.y));
 			return false;
 		}
 
@@ -216,12 +220,12 @@ struct Room::RoomImpl
 		}
 
 		if (endpoint == coord) {
-			std::fprintf(stderr, "Startpoint (%d/%d) is endpoint, can't insert.\n", coord.x, coord.y);
+			statusText_->setText(statusText_->tr("Startpoint (%1/%2) is endpoint, can't insert.\n").arg(coord.x).arg(coord.y));
 			return false;
 		}
 
 		if (!roomTriangulation.inDomain(coord.x, coord.y)) {
-			std::fprintf(stderr, "Startpoint (%d/%d) outside domain, can't insert.\n", coord.x, coord.y);
+			statusText_->setText(statusText_->tr("Startpoint (%1/%2) outside domain, can't insert.\n").arg(coord.x).arg(coord.y));
 			return false;
 		}
 
@@ -245,12 +249,12 @@ struct Room::RoomImpl
 		}
 
 		if (startpoint == coord) {
-			std::fprintf(stderr, "Endpoint (%d/%d) is startpoint, can't insert.\n", coord.x, coord.y);
+			statusText_->setText(statusText_->tr("Endpoint (%1/%2) is startpoint, can't insert.\n").arg(coord.x).arg(coord.y));
 			return false;
 		}
 
 		if (!roomTriangulation.inDomain(coord.x, coord.y)) {
-			std::fprintf(stderr, "Endpoint (%d/%d) outside domain, can't insert.\n", coord.x, coord.y);
+			statusText_->setText(statusText_->tr("Endpoint (%1/%2) outside domain, can't insert.\n").arg(coord.x).arg(coord.y));
 			return false;
 		}
 
@@ -461,13 +465,10 @@ struct Room::RoomImpl
 				unsigned int yValue = attributes.value("y").toString().toUInt();
 
 				if (name == "startpoint") {
-					std::printf("setting startpoint to: %u/%u\n", xValue, yValue);
 					setStartpoint(Coord2D(xValue, yValue));
 				} else if (name == "endpoint") {
-					std::printf("setting endpoint to: %u/%u\n", xValue, yValue);
 					setEndpoint(Coord2D(xValue, yValue));
 				} else if (name == "waypoint") {
-					std::printf("insert waypoint: %u/%u\n", xValue, yValue);
 					insert(Coord2D(xValue, yValue));
 				}
 			} else if (reader->isEndElement() && reader->name().toString() == "room") {
@@ -529,8 +530,8 @@ struct Room::RoomImpl
 
 
 
-Room::Room(std::string const &filename, unsigned char distance)
-	: p(new RoomImpl(filename, distance))
+Room::Room(std::string const &filename, unsigned char distance, QTextEdit *statusText, QTextEdit *helpText)
+	: p(new RoomImpl(filename, distance, statusText, helpText))
 {
 }
 

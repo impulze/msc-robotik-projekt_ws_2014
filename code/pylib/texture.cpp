@@ -6,8 +6,6 @@
 
 #include <stdexcept>
 
-#include <stdio.h>
-
 class Texture::TextureImpl
 {
 public:

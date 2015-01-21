@@ -61,7 +61,8 @@ private:
 	QCheckBox *boxShowWay_;
 	QCheckBox *boxShowPath_;
 	QCheckBox *boxShowNeighbours_;
-	QTextEdit *infoTextEdit_;
+	QTextEdit *statusText_;
+	QTextEdit *helpText_;
 
 	friend class CheckBoxEventFilter;
 };

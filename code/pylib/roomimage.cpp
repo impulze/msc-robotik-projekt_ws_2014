@@ -4,8 +4,6 @@
 #include <map>
 #include <set>
 
-#include <stdio.h>
-
 namespace
 {
 	bool isBlack(unsigned char const *bytes)

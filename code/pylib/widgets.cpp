@@ -15,7 +15,6 @@
 #include <QtWidgets/QMenuBar>
 #include <QtWidgets/QTextEdit>
 
-#include <cstdio>
 #include <vector>
 
 #include <assert.h>
@@ -49,8 +48,12 @@ CentralWidget::CentralWidget(QWidget *parent)
 	  drawing_(0),
 	  drawWidget_(0)
 {
-	infoTextEdit_ = new QTextEdit(this);
-	infoTextEdit_->setDisabled(true);
+	QLabel *statusLabel = new QLabel(tr("Status"));
+	statusText_ = new QTextEdit(this);
+	statusText_->setDisabled(true);
+	QLabel *helpLabel = new QLabel(tr("Help"));
+	helpText_ = new QTextEdit(this);
+	helpText_->setDisabled(true);
 
 	QLabel *amountLabel = new QLabel(tr("Amount of nodes"), this);
 	QLineEdit *amountField = new QLineEdit(this);
@@ -86,18 +89,29 @@ CentralWidget::CentralWidget(QWidget *parent)
 	sideLayout->addWidget(boxDel_);
 	sideLayout->addWidget(boxStart_);
 	sideLayout->addWidget(boxEnd_);
-	QFrame *line = new QFrame(this);
-	line->setFrameShape(QFrame::HLine);
-	line->setFrameShadow(QFrame::Sunken);
-	sideLayout->addWidget(line);
+	QFrame *line1 = new QFrame(this);
+	line1->setFrameShape(QFrame::HLine);
+	line1->setFrameShadow(QFrame::Sunken);
+	sideLayout->addWidget(line1);
 	sideLayout->addWidget(boxShowTri_);
 	sideLayout->addWidget(boxShowRoomTri_);
 	sideLayout->addWidget(boxShowWay_);
 	sideLayout->addWidget(boxShowPath_);
 	sideLayout->addWidget(boxShowNeighbours_);
+	QFrame *line2 = new QFrame(this);
+	line2->setFrameShape(QFrame::HLine);
+	line2->setFrameShadow(QFrame::Sunken);
+	sideLayout->addWidget(line2);
 	QSpacerItem *spacer = new QSpacerItem(1, 1, QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
 	sideLayout->addItem(spacer);
-	sideLayout->addWidget(infoTextEdit_);
+	sideLayout->addWidget(statusLabel);
+	sideLayout->addWidget(statusText_);
+	QFrame *line3 = new QFrame(this);
+	line3->setFrameShape(QFrame::HLine);
+	line3->setFrameShadow(QFrame::Sunken);
+	sideLayout->addWidget(line3);
+	sideLayout->addWidget(helpLabel);
+	sideLayout->addWidget(helpText_);
 	QHBoxLayout *mainLayout = new QHBoxLayout(this);
 	mainLayout->addLayout(sideLayout);
 
@@ -142,7 +156,7 @@ void CentralWidget::wantsRoomLoaded()
 	delete drawing_;
 	drawing_ = 0;
 
-	drawing_ = new Drawing;
+	drawing_ = new Drawing(statusText_, helpText_);
 	drawing_->fromImage(filename.toStdString().c_str());
 	drawWidget_ = new DrawWidget(drawing_, this);
 	static_cast<QHBoxLayout *>(layout())->addWidget(drawWidget_, 1);
@@ -174,7 +188,7 @@ void CentralWidget::wantsProjectLoaded()
 
 	QXmlStreamReader reader(&loadFile);
 
-	drawing_ = new Drawing;
+	drawing_ = new Drawing(statusText_, helpText_);
 
 	QString errorString;
 
@@ -398,7 +412,7 @@ bool CentralWidget::checkBoxEvent(QObject *object, QEvent *event)
 	}
 
 	if (!showText.empty()) {
-		infoTextEdit_->setText(QString::fromStdString(showText));
+		helpText_->setText(QString::fromStdString(showText));
 	}
 
 	return QObject::eventFilter(object, event);

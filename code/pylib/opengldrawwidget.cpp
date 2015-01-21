@@ -2,7 +2,6 @@
 #include "opengldrawwidget.h"
 
 #include <QTimer>
-#include <stdio.h>
 
 OpenGLDrawWidget::OpenGLDrawWidget(Drawing *drawing, QWidget *parent)
 	: QOpenGLWidget(parent),

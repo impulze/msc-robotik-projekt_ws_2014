@@ -1,6 +1,7 @@
 #ifndef ROB_DRAWING_H_INCLUDED
 #define ROB_DRAWING_H_INCLUDED
 
+class QTextEdit;
 class QXmlStreamReader;
 class QXmlStreamWriter;
 class Room;
@@ -9,7 +10,7 @@ class Texture;
 class Drawing
 {
 public:
-	Drawing();
+	Drawing(QTextEdit *statusText, QTextEdit *helpText);
 	~Drawing();
 
 	enum WaypointModification
