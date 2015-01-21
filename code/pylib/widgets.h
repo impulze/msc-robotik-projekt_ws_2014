@@ -6,6 +6,7 @@
 class Drawing;
 class DrawWidget;
 class QCheckBox;
+class QLineEdit;
 class QTextEdit;
 class QXmlStreamReader;
 class QXmlStreamWriter;
@@ -45,6 +46,7 @@ private Q_SLOTS:
 	void wantsProjectSaved();
 	void checkBoxChanged(int state);
 	void amountOfNodesChanged();
+	void sceneCouldChange();
 
 private:
 	bool checkBoxEvent(QObject *object, QEvent *event);
@@ -52,6 +54,7 @@ private:
 private:
 	Drawing *drawing_;
 	DrawWidget *drawWidget_;
+	QLineEdit *amountField_;
 	QCheckBox *boxAdd_;
 	QCheckBox *boxDel_;
 	QCheckBox *boxStart_;

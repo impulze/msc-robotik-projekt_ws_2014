@@ -35,7 +35,7 @@ public:
 	bool removeWaypoint(Coord2D const &coord);
 	void clearWaypoints();
 	bool hasWaypoint(Coord2D const &coord) const;
-	std::set<Coord2D> getWaypoints() const;
+	std::set<Coord2D> const &getWaypoints() const;
 
 	NeighboursMap getNeighbours() const;
 	std::vector< std::vector<Edge> > getEdges() const;

@@ -61,7 +61,9 @@ public:
 	void setNodes(int amount);
 	void setWaypointModification(Drawing::WaypointModification modification);
 	void setOption(Drawing::Option option, bool enabled);
-	void mouseClick(int x, int y, Drawing::MouseButton button);
+	void mouseClick(int x, int y);
+
+	std::size_t countWaypoints() const;
 
 	void initialize();
 	void paint();
@@ -177,7 +179,7 @@ void Drawing::DrawingImpl::setOption(Drawing::Option option, bool enabled)
 	}
 }
 
-void Drawing::DrawingImpl::mouseClick(int x, int y, Drawing::MouseButton button)
+void Drawing::DrawingImpl::mouseClick(int x, int y)
 {
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -204,44 +206,47 @@ void Drawing::DrawingImpl::mouseClick(int x, int y, Drawing::MouseButton button)
 	x = posX;
 	y = posY;
 
-	if (button == Drawing::LeftMouseButton) {
-		bool changed = false;
+	bool changed = false;
 
-		switch (waypointModification) {
-			case Drawing::WaypointAdd:
-				changed = room->insertWaypoint(Coord2D(x, y));
-				break;
+	switch (waypointModification) {
+		case Drawing::WaypointAdd:
+			changed = room->insertWaypoint(Coord2D(x, y));
+			break;
 
-			case Drawing::WaypointDelete:
-				changed = delNode(x, y);
-				break;
+		case Drawing::WaypointDelete:
+			changed = delNode(x, y);
+			break;
 
-			case Drawing::WaypointStart:
-				changed = room->setStartpoint(Coord2D(x, y));
-				break;
+		case Drawing::WaypointStart:
+			changed = room->setStartpoint(Coord2D(x, y));
+			break;
 
-			case Drawing::WaypointEnd:
-				changed = room->setEndpoint(Coord2D(x, y));
-				break;
+		case Drawing::WaypointEnd:
+			changed = room->setEndpoint(Coord2D(x, y));
+			break;
 		
-			default:
-				break;
-		}
-
-		if (show_[ShowNeighbours]) {
-			Coord2D coord;
-
-			if (!getCoordFromMouseClick(x, y, coord)) {
-				return;
-			}
-
-			showNeighbours(coord);
-		}
-
-		if (changed) {
-			updateRoom();
-		}
+		default:
+			break;
 	}
+
+	if (show_[ShowNeighbours]) {
+		Coord2D coord;
+
+		if (!getCoordFromMouseClick(x, y, coord)) {
+			return;
+		}
+
+		showNeighbours(coord);
+	}
+
+	if (changed) {
+		updateRoom();
+	}
+}
+
+std::size_t Drawing::DrawingImpl::countWaypoints() const
+{
+	return room->getWaypoints().size();
 }
 
 void Drawing::DrawingImpl::initialize()
@@ -705,9 +710,14 @@ void Drawing::setOption(Option option, bool enabled)
 	p->setOption(option, enabled);
 }
 
-void Drawing::mouseClick(int x, int y, MouseButton button)
+void Drawing::mouseClick(int x, int y)
 {
-	p->mouseClick(x, y, button);
+	p->mouseClick(x, y);
+}
+
+std::size_t Drawing::countWaypoints() const
+{
+	return p->countWaypoints();
 }
 
 void Drawing::initialize()

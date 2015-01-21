@@ -28,9 +28,8 @@ bool DrawWidget::eventFilter(QObject *object, QEvent *event)
 		QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
 
 		if (mouseEvent->button() == Qt::LeftButton) {
-			drawing_->mouseClick(mouseEvent->x(), mouseEvent->y(), Drawing::LeftMouseButton);
-		} else if (mouseEvent->button() == Qt::RightButton) {
-			drawing_->mouseClick(mouseEvent->x(), mouseEvent->y(), Drawing::RightMouseButton);
+			drawing_->mouseClick(mouseEvent->x(), mouseEvent->y());
+			emit mouseClicked();
 		}
 	}
 

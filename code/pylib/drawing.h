@@ -1,6 +1,8 @@
 #ifndef ROB_DRAWING_H_INCLUDED
 #define ROB_DRAWING_H_INCLUDED
 
+#include <cstddef>
+
 class QTextEdit;
 class QXmlStreamReader;
 class QXmlStreamWriter;
@@ -31,18 +33,14 @@ public:
 		ShowNeighbours
 	};
 
-	enum MouseButton
-	{
-		LeftMouseButton,
-		RightMouseButton
-	};
-
 	void fromImage(const char *name);
 
 	void setNodes(int amount);
 	void setWaypointModification(WaypointModification modification);
 	void setOption(Option option, bool enabled);
-	void mouseClick(int x, int y, MouseButton button);
+	void mouseClick(int x, int y);
+
+	std::size_t countWaypoints() const;
 
 	void initialize();
 	void paint();

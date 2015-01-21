@@ -14,6 +14,9 @@ public:
 	DrawWidget(Drawing *drawing, QWidget *parent = 0);
 	~DrawWidget();
 
+Q_SIGNALS:
+	void mouseClicked();
+
 private:
 	DrawWidget(const DrawWidget &other);
 	DrawWidget &operator=(const DrawWidget &other);

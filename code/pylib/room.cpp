@@ -56,9 +56,8 @@ struct Room::RoomImpl
 
 		// this array below distinguishes between big room (first) and holes
 		std::vector<Polygon2D> borderPolygons;
-		std::vector<Polygon2D> doorPolygons;
 
-		image->getBorderPolygons(distance, borderPolygons, doorPolygons);
+		image->getBorderPolygons(distance, borderPolygons, doorPolygons_);
 
 		// this array doesn't distinguish between big room and holes
 		//std::vector<Edge> constraints = roomTriangulation.getConstrainedEdges();
@@ -106,30 +105,7 @@ struct Room::RoomImpl
 
 		reinitializeTriangulation();
 
-		for (std::vector<Polygon2D>::const_iterator it = doorPolygons.begin();
-		     it != doorPolygons.end();
-		     it++) {
-			assert(it->size() == 2);
-
-			Coord2D first = (*it)[0];
-			Coord2D second = (*it)[1];
-
-			int diffX = static_cast<int>(first.x) - static_cast<int>(second.x);
-			int diffY = static_cast<int>(first.y) - static_cast<int>(second.y);
-
-			if (diffX < 0) {
-				diffX *= -1;
-			}
-
-			if (diffY < 0) {
-				diffY *= -1;
-			}
-
-			unsigned int newX = std::min(first.x, second.x) + diffX / 2;
-			unsigned int newY = std::min(first.y, second.y) + diffY / 2;
-
-			insert(Coord2D(newX, newY));
-		}
+		setDoorWaypoints();
 
 		while (true) {
 			int randX = randomAtMost(width - 1);
@@ -169,6 +145,7 @@ struct Room::RoomImpl
 	std::set<Coord2D> waypoints;
 	QTextEdit *statusText_;
 	QTextEdit *helpText_;
+	std::vector<Polygon2D> doorPolygons_;
 
 	bool insert(Coord2D const &coord)
 	{
@@ -281,6 +258,36 @@ struct Room::RoomImpl
 				i--;
 				continue;
 			}
+		}
+
+		setDoorWaypoints();
+	}
+
+	void setDoorWaypoints()
+	{
+		for (std::vector<Polygon2D>::const_iterator it = doorPolygons_.begin();
+		     it != doorPolygons_.end();
+		     it++) {
+			assert(it->size() == 2);
+
+			Coord2D first = (*it)[0];
+			Coord2D second = (*it)[1];
+
+			int diffX = static_cast<int>(first.x) - static_cast<int>(second.x);
+			int diffY = static_cast<int>(first.y) - static_cast<int>(second.y);
+
+			if (diffX < 0) {
+				diffX *= -1;
+			}
+
+			if (diffY < 0) {
+				diffY *= -1;
+			}
+
+			unsigned int newX = std::min(first.x, second.x) + diffX / 2;
+			unsigned int newY = std::min(first.y, second.y) + diffY / 2;
+
+			insert(Coord2D(newX, newY));
 		}
 	}
 
@@ -583,6 +590,7 @@ bool Room::removeWaypoint(Coord2D const &coord)
 void Room::clearWaypoints()
 {
 	p->reinitializeTriangulation();
+	p->waypoints.clear();
 }
 
 bool Room::hasWaypoint(Coord2D const &coord) const
@@ -590,9 +598,9 @@ bool Room::hasWaypoint(Coord2D const &coord) const
 	return p->triangulation.pointIsVertex(coord);
 }
 
-std::set<Coord2D> Room::getWaypoints() const
+std::set<Coord2D> const &Room::getWaypoints() const
 {
-	return p->triangulation.list();
+	return p->waypoints;
 }
 
 NeighboursMap Room::getNeighbours() const

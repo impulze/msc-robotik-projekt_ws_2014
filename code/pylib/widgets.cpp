@@ -56,9 +56,9 @@ CentralWidget::CentralWidget(QWidget *parent)
 	helpText_->setDisabled(true);
 
 	QLabel *amountLabel = new QLabel(tr("Amount of nodes"), this);
-	QLineEdit *amountField = new QLineEdit(this);
-	amountField->setValidator(new QIntValidator(2, 20000, this));
-	connect(amountField, SIGNAL(returnPressed()), this, SLOT(amountOfNodesChanged()));
+	amountField_ = new QLineEdit(this);
+	amountField_->setValidator(new QIntValidator(0, 20000, this));
+	connect(amountField_, SIGNAL(returnPressed()), this, SLOT(amountOfNodesChanged()));
 
 	boxAdd_ = new QCheckBox(tr("Add waypoint"), this);
 	boxDel_ = new QCheckBox(tr("Remove waypoint"), this);
@@ -83,7 +83,7 @@ CentralWidget::CentralWidget(QWidget *parent)
 	QVBoxLayout *sideLayout = new QVBoxLayout;
 	QLayout *amountLayout = new QHBoxLayout;
 	amountLayout->addWidget(amountLabel);
-	amountLayout->addWidget(amountField);
+	amountLayout->addWidget(amountField_);
 	sideLayout->addLayout(amountLayout);
 	sideLayout->addWidget(boxAdd_);
 	sideLayout->addWidget(boxDel_);
@@ -159,6 +159,8 @@ void CentralWidget::wantsRoomLoaded()
 	drawing_ = new Drawing(statusText_, helpText_);
 	drawing_->fromImage(filename.toStdString().c_str());
 	drawWidget_ = new DrawWidget(drawing_, this);
+	amountField_->setText(QString::number(drawing_->countWaypoints()));
+	connect(drawWidget_, SIGNAL(mouseClicked()), this, SLOT(sceneCouldChange()));
 	static_cast<QHBoxLayout *>(layout())->addWidget(drawWidget_, 1);
 }
 
@@ -249,6 +251,8 @@ void CentralWidget::wantsProjectLoaded()
 		drawing_ = 0;
 	} else {
 		drawWidget_ = new DrawWidget(drawing_, this);
+		amountField_->setText(QString::number(drawing_->countWaypoints()));
+		connect(drawWidget_, SIGNAL(mouseClicked()), this, SLOT(sceneCouldChange()));
 		static_cast<QHBoxLayout *>(layout())->addWidget(drawWidget_, 1);
 	}
 }
@@ -380,6 +384,12 @@ void CentralWidget::amountOfNodesChanged()
 	int num = lineEdit->text().toInt();
 
 	drawing_->setNodes(num);
+	amountField_->setText(QString::number(drawing_->countWaypoints()));
+}
+
+void CentralWidget::sceneCouldChange()
+{
+	amountField_->setText(QString::number(drawing_->countWaypoints()));
 }
 
 bool CentralWidget::checkBoxEvent(QObject *object, QEvent *event)
@@ -412,6 +422,10 @@ bool CentralWidget::checkBoxEvent(QObject *object, QEvent *event)
 	}
 
 	if (!showText.empty()) {
+		if (event->type() == QEvent::Leave) {
+			showText = "";
+		}
+
 		helpText_->setText(QString::fromStdString(showText));
 	}
 
