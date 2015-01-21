@@ -478,7 +478,7 @@ void Drawing::DrawingImpl::paint()
 	drawPoint(room->getStartpoint().x, room->getStartpoint().y);
 
 	// Collisions
-	if (!pathCollisions.empty()) {
+	if (show_[ShowPath] && !pathCollisions.empty()) {
 		glBindBuffer(GL_ARRAY_BUFFER, crossVBO);
 		glEnableClientState(GL_VERTEX_ARRAY);
 		glVertexPointer(2, GL_DOUBLE, 0, 0);
