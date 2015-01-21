@@ -10,6 +10,7 @@ Image::Image(std::string const &filename)
 	: filename_(filename)
 {
 	ilInit();
+	iluInit();
 	checkILError();
 
 	ILuint handle;
