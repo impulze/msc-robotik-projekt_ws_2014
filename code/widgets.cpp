@@ -172,9 +172,6 @@ CentralWidget::CentralWidget(QWidget *parent)
 	QHBoxLayout *mainLayout = new QHBoxLayout(this);
 	mainLayout->addLayout(sideLayout);
 
-	boxShowWay_->setCheckState(Qt::Checked);
-	boxShowPath_->setCheckState(Qt::Checked);
-
 	CheckBoxEventFilter *filter = new CheckBoxEventFilter(this);
 	boxAdd_->installEventFilter(filter);
 	boxDel_->installEventFilter(filter);
