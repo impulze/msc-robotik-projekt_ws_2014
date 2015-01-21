@@ -1,6 +1,8 @@
 #ifndef ROB_DRAWING_H_INCLUDED
 #define ROB_DRAWING_H_INCLUDED
 
+#include <QObject>
+
 #include <cstddef>
 
 class QTextEdit;
@@ -10,7 +12,10 @@ class Room;
 class Texture;
 
 class Drawing
+	: public QObject
 {
+	Q_OBJECT
+
 public:
 	Drawing(QTextEdit *statusText, QTextEdit *helpText);
 	~Drawing();
@@ -45,13 +50,18 @@ public:
 	void initialize();
 	void paint();
 	void resize(int width, int height);
+	void animate();
 
 	bool loadRoom(const char *name);
 	bool loadProject(QXmlStreamReader *reader);
 	bool saveProject(QXmlStreamWriter *writer) const;
 
+private Q_SLOTS:
+	void animationForward();
+
 private:
 	class DrawingImpl;
+	friend class DrawingImpl;
 	DrawingImpl *p;
 };
 

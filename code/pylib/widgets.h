@@ -9,6 +9,7 @@ class Drawing;
 class DrawWidget;
 class QCheckBox;
 class QLineEdit;
+class QPushButton;
 class QTextEdit;
 class QXmlStreamReader;
 class QXmlStreamWriter;
@@ -47,6 +48,7 @@ private Q_SLOTS:
 	void wantsProjectLoaded();
 	void wantsProjectSaved();
 	void checkBoxChanged(int state);
+	void buttonClicked();
 	void amountOfNodesChanged();
 	void sceneCouldChange();
 
@@ -67,6 +69,7 @@ private:
 	QCheckBox *boxShowWay_;
 	QCheckBox *boxShowPath_;
 	QCheckBox *boxShowNeighbours_;
+	QPushButton *buttonAnimate_;
 	QTextEdit *statusText_;
 	QTextEdit *helpText_;
 	std::map<int, bool> showOptions_;

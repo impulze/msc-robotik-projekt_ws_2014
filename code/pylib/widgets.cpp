@@ -13,6 +13,7 @@
 #include <QtWidgets/QLayout>
 #include <QtWidgets/QLineEdit>
 #include <QtWidgets/QMenuBar>
+#include <QtWidgets/QPushButton>
 #include <QtWidgets/QTextEdit>
 
 #include <vector>
@@ -69,6 +70,7 @@ CentralWidget::CentralWidget(QWidget *parent)
 	boxShowWay_ = new QCheckBox(tr("Show waypoints"), this);
 	boxShowPath_ = new QCheckBox(tr("Show path"), this);
 	boxShowNeighbours_ = new QCheckBox(tr("Show neighbours"), this);
+	buttonAnimate_ = new QPushButton(tr("Animate"), this);
 
 	connect(boxAdd_, SIGNAL(stateChanged(int)), this, SLOT(checkBoxChanged(int)));
 	connect(boxDel_, SIGNAL(stateChanged(int)), this, SLOT(checkBoxChanged(int)));
@@ -79,6 +81,7 @@ CentralWidget::CentralWidget(QWidget *parent)
 	connect(boxShowWay_, SIGNAL(stateChanged(int)), this, SLOT(checkBoxChanged(int)));
 	connect(boxShowPath_, SIGNAL(stateChanged(int)), this, SLOT(checkBoxChanged(int)));
 	connect(boxShowNeighbours_, SIGNAL(stateChanged(int)), this, SLOT(checkBoxChanged(int)));
+	connect(buttonAnimate_, SIGNAL(clicked()), this, SLOT(buttonClicked()));
 
 	QVBoxLayout *sideLayout = new QVBoxLayout;
 	QLayout *amountLayout = new QHBoxLayout;
@@ -98,6 +101,7 @@ CentralWidget::CentralWidget(QWidget *parent)
 	sideLayout->addWidget(boxShowWay_);
 	sideLayout->addWidget(boxShowPath_);
 	sideLayout->addWidget(boxShowNeighbours_);
+	sideLayout->addWidget(buttonAnimate_);
 	QFrame *line2 = new QFrame(this);
 	line2->setFrameShape(QFrame::HLine);
 	line2->setFrameShadow(QFrame::Sunken);
@@ -362,6 +366,19 @@ void CentralWidget::checkBoxChanged(int state)
 
 	showOptions_[option] = state == Qt::Checked;
 	drawing_->setOption(option, state == Qt::Checked);
+}
+
+void CentralWidget::buttonClicked()
+{
+	if (!drawing_) {
+		return;
+	}
+
+	QObject *sender = QObject::sender();
+
+	if (sender == buttonAnimate_) {
+		drawing_->animate();
+	}
 }
 
 void CentralWidget::amountOfNodesChanged()

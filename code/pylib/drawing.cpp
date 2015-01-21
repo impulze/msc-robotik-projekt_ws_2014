@@ -7,6 +7,8 @@
 #include "roomimage.h"
 #include "texture.h"
 
+#include <QtCore/QTimer>
+
 #include <GL/gl.h>
 #include <GL/glu.h>
 #include <IL/il.h>
@@ -51,7 +53,7 @@ void throwErrorFromGLError()
 class Drawing::DrawingImpl
 {
 public:
-	DrawingImpl(QTextEdit *statusText, QTextEdit *helpText);
+	DrawingImpl(Drawing *parent, QTextEdit *statusText, QTextEdit *helpText);
 	~DrawingImpl();
 
 	void fromImage(const char *name);
@@ -68,6 +70,7 @@ public:
 	void initialize();
 	void paint();
 	void resize(int width, int height);
+	void animate();
 
 	void freeTexture();
 	bool checkNode(int x, int y);
@@ -79,6 +82,7 @@ public:
 
 	bool loadProject(QXmlStreamReader *reader);
 	bool saveProject(QXmlStreamWriter *writer) const;
+	void animationForward();
 
 	Drawing::WaypointModification waypointModification;
 	GLint viewport[4];
@@ -97,20 +101,28 @@ public:
 	std::map<Coord2D, bool> neighbourToShowNeighbours;
 	QTextEdit *statusText_;
 	QTextEdit *helpText_;
+	QTimer *animationTimer;
+	bool animated;
+	std::vector< Coord2DTemplate<float> > animationPoints;
+	std::vector< Coord2DTemplate<float> >::const_iterator animationPosition;
 };
 
-Drawing::DrawingImpl::DrawingImpl(QTextEdit *statusText, QTextEdit *helpText)
+Drawing::DrawingImpl::DrawingImpl(Drawing *parent, QTextEdit *statusText, QTextEdit *helpText)
 	: waypointModification(Drawing::WaypointNoMod),
 	  room(0),
 	  texture(0),
 	  statusText_(statusText),
-	  helpText_(helpText)
+	  helpText_(helpText),
+	  animationTimer(new QTimer(parent)),
+	  animated(false)
 {
 	std::srand(std::time(0));
 
 	for (size_t i = 0; i < sizeof show_ / sizeof *show_; i++) {
 		show_[i] = false;
 	}
+
+	connect(animationTimer, SIGNAL(timeout()), parent, SLOT(animationForward()));
 }
 
 Drawing::DrawingImpl::~DrawingImpl()
@@ -457,7 +469,6 @@ void Drawing::DrawingImpl::paint()
 	glColor3f(1.0f, 0.0f, 0.0f);
 	drawPoint(room->getEndpoint().x, room->getEndpoint().y);
 
-	glTranslatef(0.0f, 0.0f, 0.2f);
 	glColor3f(0.0f, 1.0f, 0.0f);
 	drawPoint(room->getStartpoint().x, room->getStartpoint().y);
 
@@ -472,6 +483,11 @@ void Drawing::DrawingImpl::paint()
 		for (std::set< Coord2DTemplate<float> >::const_iterator it = pathCollisions.begin(); it != pathCollisions.end(); ++it) {
 			drawCross(it->x, it->y);
 		}
+	}
+
+	if (animated) {
+		glColor3f(0.73f, 0.56f, 0.56f);
+		drawPoint(animationPosition->x, animationPosition->y);
 	}
 
 	glDisableClientState(GL_VERTEX_ARRAY);
@@ -489,6 +505,24 @@ void Drawing::DrawingImpl::resize(int width, int height)
 	viewport[1] = 0;
 	viewport[2] = width;
 	viewport[3] = height;
+}
+
+void Drawing::DrawingImpl::animate()
+{
+	if (pathPoints.empty()) {
+		statusText_->setText(statusText_->tr("There's no path yet, that can be animated."));
+		return;
+	}
+
+	if (!pathCollisions.empty()) {
+		statusText_->setText(statusText_->tr("The path collides, no animation possible."));
+		return;
+	}
+
+	animated = true;
+	animationTimer->start(1000 / 16);
+	animationPoints = pathPoints;
+	animationPosition = animationPoints.begin();
 }
 
 void Drawing::DrawingImpl::freeTexture()
@@ -680,8 +714,19 @@ bool Drawing::DrawingImpl::saveProject(QXmlStreamWriter *writer) const
 	return !writer->hasError();
 }
 
+void Drawing::DrawingImpl::animationForward()
+{
+	if (animationPosition == animationPoints.end()) {
+		animationPoints.clear();
+		animated = false;
+		animationTimer->stop();
+	}
+
+	++animationPosition;
+}
+
 Drawing::Drawing(QTextEdit *statusText, QTextEdit *helpText)
-	: p(new DrawingImpl(statusText, helpText))
+	: p(new DrawingImpl(this, statusText, helpText))
 {
 }
 
@@ -735,6 +780,11 @@ void Drawing::resize(int width, int height)
 	p->resize(width, height);
 }
 
+void Drawing::animate()
+{
+	p->animate();
+}
+
 bool Drawing::loadProject(QXmlStreamReader *reader)
 {
 	return p->loadProject(reader);
@@ -743,4 +793,9 @@ bool Drawing::loadProject(QXmlStreamReader *reader)
 bool Drawing::saveProject(QXmlStreamWriter *writer) const
 {
 	return p->saveProject(writer);
+}
+
+void Drawing::animationForward()
+{
+	p->animationForward();
 }
