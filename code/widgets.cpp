@@ -571,7 +571,6 @@ void CentralWidget::createNewDrawing()
 {
 	delete stats_;
 	stats_ = new Stats();
-	printf("new stats module: %p\n", stats_);
 
 	drawing_ = new Drawing(stats_, statusText_, helpText_);
 }
