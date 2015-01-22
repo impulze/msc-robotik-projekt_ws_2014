@@ -163,15 +163,11 @@ void Drawing::DrawingImpl::updateRoom()
 
 	triangulation = room->getTriangulation();
 
-	timer.start();
-
 	path = room->generatePath();
 
 	if (path.begin()->x > path.rbegin()->x) {
 		std::reverse(path.begin(), path.end());
 	}
-
-	stats->lastPathCalculation = timer.elapsed();
 
 	timer.start();
 

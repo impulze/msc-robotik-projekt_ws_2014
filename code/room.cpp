@@ -465,11 +465,17 @@ struct Room::RoomImpl
 
 		stats->lastUsedAlgorithm = algorithm;
 
+		QElapsedTimer timer;
+
+		timer.start();
+
 		if (algorithm == Room::Dijkstra) {
 			generatedPath = dijkstra(neighbours, startpoint, endpoint);
 		} else {
 			generatedPath = astar(neighbours, startpoint, endpoint);
 		}
+
+		stats->lastPathCalculation = timer.elapsed();
 
 		return generatedPath;
 	}
