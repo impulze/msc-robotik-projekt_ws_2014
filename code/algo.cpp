@@ -68,24 +68,22 @@ std::vector< Coord2DTemplate<float> > catmullRom(std::vector<Coord2D> const &way
 		Coord2D c4;
 		Coord2DTemplate<float> result;
 
+		if (i == 0) {
+			c1 = waypoints[i];
+		} else {
+			c1 = waypoints[i - 1];
+		}
+
+		c2 = waypoints[i];
+		c3 = waypoints[i + 1];
+
+		if (i == waypoints.size() - 2) {
+			c4 = waypoints[i + 1];
+		} else {
+			c4 = waypoints[i + 2];
+		}
+
 		for (float t = 0.0f; t <= 1.0f; t += 1.0f / steps) {
-			if (i == 0) {
-				c1.x = 2 * waypoints[i].x - waypoints[i + 1].x;
-				c1.y = 2 * waypoints[i].y - waypoints[i + 1].y;
-			} else {
-				c1 = waypoints[i - 1];
-			}
-
-			c2 = waypoints[i];
-			c3 = waypoints[i + 1];
-
-			if (i == waypoints.size() - 2) {
-				c4.x = c3.x * 2 - c2.x;
-				c4.y = c3.y * 2 - c2.y;
-			} else {
-				c4 = waypoints[i + 2];
-			}
-
 			double a = 1;
 
 			double matrix[4][4] = {
