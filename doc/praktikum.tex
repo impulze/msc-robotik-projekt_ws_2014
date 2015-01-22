@@ -15,8 +15,6 @@
 \usepackage{multirow}
 \usepackage{listings}
 
-\author{Daniel Mierswa}
-
 \renewcommand{\lstlistingname}{\normalsize Quellcode}
 \renewcommand{\lstlistlistingname}{Verzeichnis der Quellcodes}
 
@@ -34,8 +32,10 @@
 \author{
 	\textit{Mierswa, Daniel} \\
 	Matrikelnummer: XXXXXX \\
-	daniel.mierswa@student.hs-rm.de \\
+	daniel.b.mierswa@student.hs-rm.de \\
 }
+
+\date{22. Januar 2014}
 
 \begin{document}
 
@@ -405,20 +405,48 @@ der dafür sorgt, dass sobald das Ereignissystem von Qt bereit ist, die Szene ne
 
 Im Programmcode der Visualisierung werden bei der Initialisierung \emph{Vertex Arrays} gebaut, die
 benötigt werden, um schnell einfache primitive Objekte (hier: Kreise und Kreuze) zu zeichnen.
-
-wird mit einem OpenGL-Kontext 
-er Programmcode, welcher sich mit der Szene befasst, bietet eine Schnittstelle, die vom Programmcode
-der Benutzeroberfläche genutzt wird.
+Direkt nach dem Initialisieren stehen die OpenGL-Befehle breit, somit wird dann vom geladenen
+Bild eine Textur erzeugt und eingebettet.
+Funktional wäre das Programm auch korrekt, wenn die Textur nicht angezeigt werden würde, allerdings
+hätte dies zur Folge, dass man nicht nachsehen kann, wo sich der Roboter oder andere Dinge im Raum
+befinden.
+Je nach Verfügbarkeit von Rechenzeit wird Qt dann versuchen die Szene zu zeichnen, also den OpenGL-Kontext
+erstellen und die Aufgabe an den Programmcode der Visualisierung delegieren.
+Dort werden dann die Primitiven, die zuvor initialisiert worden sind, je nach Einstellungen der Bedienoberfläche,
+gezeichnet.
+Wird der Roboter animiert, so wird versucht eine Bewegung in Schritten von 60 Hertz durchzuführen.
+Dazu wird ein Timer gestartet, der alle 17 Millisekunden den nächsten Punkt des Pfades in der Animationsfarbe
+darstellt.
+Da die Anzahl der Pfadpunkte zwischen 2 Wegpunkten immer identisch ist, scheint es, als würde sich der Roboter
+mal langsamer und mal schneller bewegen, je nach Entfernung der Wegpunkte zueinander.
+Eine Animation kann nicht abgebrochen werden.
 
 \subsection{Wegfindung}
+\label{Wegfindung}
 
 Um diese Polygone zu ermitteln, wird eine \emph{Constrained Delaunay Triangulation} (kurz: \emph{CDT})
 verwendet.
 Bei einer Constrained Delaunay Triangulation 
 
-\section{Handbuch zur Graphischen Bedienoberfläche}
-
 \section{Probleme und Ausblick}
+
+Aufgrund der vielen mathematischen Operationen besteht viel Spielraum für Performance-Verbesserung
+in allen Algorithmen.
+Insbesondere die Prüfung, ob sich ein Punkt im Raum befindet, ob eine Kante ein Objekt schneidet und
+ob der Pfad ein Objekt schneidet bedarf mehr mathematische Kenntnisse, um diese zu optimieren.
+Durch Optimierung fallen möglicherweise verwendete Konzepte und Algorithmen weg.
+Eine Verbesserung hinsichtlich der Szene kann erreicht werden, indem eine höhere Auflösung für die Textur
+bzw. des Bildes gewählt wird.
+Dann könnten die Kreise des Roboters und der Wegpunkte einen größeren Durchmesser bekommen und wären
+so besser zu erkennen.
+Der Durchmesser des Roboters ist derzeit nicht dynamisch anpassbar sondern muss im Quelltext
+bearbeitet werden, was zur Folge hat, dass das Programm neu kompiliert werden muss.
+Es wurde mit einem Speicher-Debugging-Werkzeug (\emph{Valgrind}) geprüft und durch Verbesserungen im Quelltext
+verhindert, dass Probleme mit der Behandlung von dynamischen Speicher vorliegen.
+Bei einer Weiterentwicklung sollte jedoch unbedingt Fehler geprüft werden, wenn unerwartete Benutzereingaben getätigt
+werden oder unerwartete Daten anfallen (z.B. im Bild).
+Aufgrund der Aufgabenstellung wurden die Wegpunkte statistisch verteilt, jedoch ist einer zukünftigen Version
+denkbar, dass andere Verfahren eingesetzt werden, um Wegpunkte zu verteilen (siehe Umsetzungskapitel spez. Wegfindung \ref{Wegfindung}).
 
 \section{Persönliches Fazit}
 
