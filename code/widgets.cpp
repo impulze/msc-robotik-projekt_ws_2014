@@ -454,7 +454,7 @@ void CentralWidget::buttonClicked()
 		QTableWidget *table = new QTableWidget(statsDialog);
 		table->verticalHeader()->hide();
 		table->horizontalHeader()->hide();
-		table->setRowCount(5);
+		table->setRowCount(6);
 		table->setColumnCount(2);
 
 		unsigned int width = 0;
@@ -491,6 +491,12 @@ void CentralWidget::buttonClicked()
 
 		item = new QTableWidgetItem(secondsString(stats_->lastRoomTriangulationCalculation));
 		table->setItem(4, 1, item);
+
+		item = new QTableWidgetItem(tr("Last used algorithm:"));
+		table->setItem(5, 0, item);
+
+		item = new QTableWidgetItem(stats_->lastUsedAlgorithm == Room::Dijkstra ? "Dijkstra" : "A*");
+		table->setItem(5, 1, item);
 
 		table->setEditTriggers(QAbstractItemView::NoEditTriggers);
 		table->resizeRowsToContents();
