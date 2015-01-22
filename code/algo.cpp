@@ -202,7 +202,9 @@ std::vector<Coord2D> dijkstra(NeighboursMap const &neighbours,
 
 		float const *lowest = 0;
 
-		for (std::map<Coord2D, float>::const_iterator i = gScore.begin(); i != gScore.end(); i++) {
+		for (std::set<Coord2D>::const_iterator si = openSet.begin(); si != openSet.end(); si++) {
+			std::map<Coord2D, float>::const_iterator i = gScore.find(*si);
+
 			if (lowest) {
 				if (i->second < *lowest) {
 					lowest = &(i->second);
@@ -271,7 +273,9 @@ std::vector<Coord2D> astar(NeighboursMap const &neighbours,
 
 		float const *lowest = 0;
 
-		for (std::map<Coord2D, float>::const_iterator i = fScore.begin(); i != fScore.end(); i++) {
+		for (std::set<Coord2D>::const_iterator si = openSet.begin(); si != openSet.end(); si++) {
+			std::map<Coord2D, float>::const_iterator i = fScore.find(*si);
+
 			if (lowest) {
 				if (i->second < *lowest) {
 					lowest = &(i->second);
