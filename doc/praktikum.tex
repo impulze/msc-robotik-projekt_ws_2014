@@ -327,8 +327,8 @@ Auf der linken Seite befinden sich Bedienelemente für die Szene:
 \begin{itemize}
 \item Optionen zur Modifizierung von Wegpunkten
 \item Auswahlkästchen zur Anzeige von Überprüfungshilfen
-\item Ein Knopf zum Animieren des Roboters
-\item Auswahlkästchen zur Wahl des Algorithmus zum Berechnen des Pfades
+\item Knöpfe zum Animieren des Roboters und Anzeigen von Statistiken zur Programmlaufzeit bei verschiedenen Berechnungne
+\item Aufklappmenü zur Wahl des Algorithmus zum Berechnen des Pfades
 \item Ein Textkästchen für Statusnachrichten
 \item Ein Textkästchen für Hilfestellungen
 \end{itemize}
@@ -385,7 +385,9 @@ Grüne Linien bedeuten, dass diese Nachbarn nicht mit Objekten kollidieren.
 Rote Linien verlaufen durch Objekte oder Wände.
 Unter den Kästchen befinden sich 2 Knöpfe, die zum einem den Roboter mit einem lila Kreis vom Start- bis
 zum Endpunkt fahren lässt, falls ein Pfad existiert (\emph{Animate}) und eine Statistik ausgibt, worin
-die Programmlaufzeiten für verschiedene Berechnungen hinterlegt sind (\emph{Stats}).
+die Programmlaufzeiten für verschiedene Berechnungen hinterlegt sind (\emph{Statistics}).
+Unter den Knöpfen befindet sich ein Aufklappmenü, in dem festgelegt werden kann, welcher Algorithmus genutzt wird,
+um den Graphen für den Pfad zu planen.
 
 \subsection{Szene}
 
@@ -394,6 +396,19 @@ In der Szene wird das Bild des Raumes als Hintergrund (Textur) hinterlegt, worau
 durchgeführt werden.
 Dargestellt wird immer mindestens ein Start- und Endpunkt.
 Zusätzliche Einblendungen können über die Bedienoberfläche \ref{Bedienoberfläche} vorgenommen werden.
+
+Die Szene wird durch die Verwendung von \emph{QOpenGLWidget} in die Qt-Oberfläche eingebettet.
+Diese Komponente bietet die Möglichkeit durch Ableitung der Klasse und wenigen Zeilen Code
+einen OpenGL-Kontext, der zur Verwendung des Frameworks benötigt wird, zu nutzen.
+Zusätzlich zum Code zur Initialisierung und Größenänderung der Szene, wird ein Timer eingesetzt,
+der dafür sorgt, dass sobald das Ereignissystem von Qt bereit ist, die Szene neu zeichnet.
+
+Im Programmcode der Visualisierung werden bei der Initialisierung \emph{Vertex Arrays} gebaut, die
+benötigt werden, um schnell einfache primitive Objekte (hier: Kreise und Kreuze) zu zeichnen.
+
+wird mit einem OpenGL-Kontext 
+er Programmcode, welcher sich mit der Szene befasst, bietet eine Schnittstelle, die vom Programmcode
+der Benutzeroberfläche genutzt wird.
 
 \subsection{Wegfindung}
 
