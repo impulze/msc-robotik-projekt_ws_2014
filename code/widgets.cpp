@@ -165,15 +165,6 @@ CentralWidget::CentralWidget(QWidget *parent)
 	line2->setFrameShape(QFrame::HLine);
 	line2->setFrameShadow(QFrame::Sunken);
 	sideLayout->addWidget(line2);
-#if 0
-	QHBoxLayout *algorithmsLayout = new QHBoxLayout;
-	algorithmsLayout->addWidget(algorithmsLabel);
-	algorithmsLayout->addWidget(boxDijkstra_);
-	algorithmsLayout->addWidget(boxAStar_);
-	QSpacerItem *spacer1 = new QSpacerItem(1, 1, QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
-	algorithmsLayout->addItem(spacer1);
-	sideLayout->addLayout(algorithmsLayout);
-#endif
 	sideLayout->addWidget(algorithmsLabel);
 	sideLayout->addWidget(boxAlgorithms_);
 	QFrame *line3 = new QFrame(this);
@@ -293,7 +284,9 @@ void CentralWidget::wantsProjectLoaded()
 		textEdit->insertPlainText("The following error occured:\n");
 		textEdit->insertPlainText(errorString);
 
-		QDialogButtonBox *buttons = new QDialogButtonBox(QDialogButtonBox::Discard, Qt::Horizontal, errorDialog);
+		QDialogButtonBox *buttons = new QDialogButtonBox(QDialogButtonBox::Cancel, Qt::Horizontal, errorDialog);
+
+		connect(buttons, SIGNAL(rejected()), errorDialog, SLOT(reject()));
 
 		layout->addWidget(textEdit);
 		layout->addWidget(buttons);

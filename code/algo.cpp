@@ -11,11 +11,6 @@
 
 namespace
 {
-	Coord2DTemplate<float> catmullRomImpl(double matrix[4][4], float t, Coord2D const &c1, Coord2D const &c2, Coord2D const &c3, Coord2D const &c4);
-	Coord2DTemplate<float> catmullRomFirst(float t, Coord2D const &c1, Coord2D const &c2, Coord2D const &c3);
-	Coord2DTemplate<float> catmullRomMiddle(float t, Coord2D const &c1, Coord2D const &c2, Coord2D const &c3, Coord2D const &c4);
-	Coord2DTemplate<float> catmullRomLast(float t, Coord2D const &c1, Coord2D const &c2, Coord2D const &c3);
-
 	std::vector<Coord2D> reconstructPath(std::map<Coord2D, Coord2D> &cameFrom, Coord2D const &end);
 	float distanceBetween(Coord2D const &start, Coord2D const &end);
 	float aStarHeuristicCostEstimate(Coord2D const &start, Coord2D const &end);
@@ -23,63 +18,6 @@ namespace
 
 namespace
 {
-
-Coord2DTemplate<float> catmullRomImpl(double matrix[4][4], float t, Coord2D const &c1, Coord2D const &c2, Coord2D const &c3, Coord2D const &c4)
-{
-	double first = (1 * matrix[0][0] + t * matrix[1][0] + t * t * matrix[2][0] + t * t * t * matrix[3][0]) / 2;
-	double second = (1 * matrix[0][1] + t * matrix[1][1] + t * t * matrix[2][1] + t * t * t * matrix[3][1]) / 2;
-	double third = (1 * matrix[0][2] + t * matrix[1][2] + t * t * matrix[2][2] + t * t * t * matrix[3][2]) / 2;
-	double fourth = (1 * matrix[0][3] + t * matrix[1][3] + t * t * matrix[2][3] + t * t * t * matrix[3][3]) / 2;
-
-	Coord2DTemplate<float> result;
-
-	result.x = c1.x * first + c2.x * second + c3.x * third + c4.x * fourth;
-	result.y = c1.y * first + c2.y * second + c3.y * third + c4.y * fourth;
-
-	return result;
-}
-
-Coord2DTemplate<float> catmullRomFirst(float t, Coord2D const &c1, Coord2D const &c2, Coord2D const &c3)
-{
-	double matrix[4][4] = {
-		{ 0, 2, 0, 0 },
-		{ 2, 0, 0, 0 },
-		{ -4, -5, 6, -1 },
-		{ 2, 3, -4, 1 }
-	};
-
-	Coord2D orientationPoint = c1;
-
-	return catmullRomImpl(matrix, t, orientationPoint, c1, c2, c3);
-}
-
-Coord2DTemplate<float> catmullRomMiddle(float t, Coord2D const &c1, Coord2D const &c2, Coord2D const &c3, Coord2D const &c4)
-{
-	double a = 1;
-
-	double matrix[4][4] = {
-		{ 0, 2, 0, 0 },
-		{ -a, 0, a, 0 },
-		{ 2 * a, -6 + a, 6 - 2 * a, -a },
-		{ -a, 4 - a, -4 + a, a }
-	};
-
-	return catmullRomImpl(matrix, t, c1, c2, c3, c4);
-}
-
-Coord2DTemplate<float> catmullRomLast(float t, Coord2D const &c1, Coord2D const &c2, Coord2D const &c3)
-{
-	double matrix[4][4] = {
-		{ 0, 2, 0, 0 },
-		{ -1, 0, 1, 0 },
-		{ 2, -6, 4, -2 },
-		{ -1, 4, -3, 2 }
-	};
-
-	Coord2D orientationPoint = c3;
-
-	return catmullRomImpl(matrix, t, c1, c2, c3, orientationPoint);
-}
 
 std::vector<Coord2D> reconstructPath(std::map<Coord2D, Coord2D> &cameFrom, Coord2D const &end)
 {
@@ -121,6 +59,8 @@ std::vector< Coord2DTemplate<float> > catmullRom(std::vector<Coord2D> const &way
 {
 	std::vector< Coord2DTemplate<float> > pathPoints;
 
+	// from https://forum.libcinder.org/topic/creating-catmull-rom-spline-from-the-bspline-class
+
 	for (std::vector<Coord2D>::size_type i = 0; i < waypoints.size() - 1; i++) {
 		Coord2D c1;
 		Coord2D c2;
@@ -130,7 +70,8 @@ std::vector< Coord2DTemplate<float> > catmullRom(std::vector<Coord2D> const &way
 
 		for (float t = 0.0f; t <= 1.0f; t += 1.0f / steps) {
 			if (i == 0) {
-				c1 = waypoints[i];
+				c1.x = 2 * waypoints[i].x - waypoints[i + 1].x;
+				c1.y = 2 * waypoints[i].y - waypoints[i + 1].y;
 			} else {
 				c1 = waypoints[i - 1];
 			}
@@ -139,43 +80,28 @@ std::vector< Coord2DTemplate<float> > catmullRom(std::vector<Coord2D> const &way
 			c3 = waypoints[i + 1];
 
 			if (i == waypoints.size() - 2) {
-				c4 = c3;
+				c4.x = c3.x * 2 - c2.x;
+				c4.y = c3.y * 2 - c2.y;
 			} else {
 				c4 = waypoints[i + 2];
 			}
 
-			result = catmullRomMiddle(t, c1, c2, c3, c4);
-#if 0
-			if (i == 0) {
-				c1 = waypoints[i];
-				c2 = waypoints[i + 1];
+			double a = 1;
 
-				if (i + 2 == waypoints.size()) {
-					c3 = c2;
-				} else {
-					c3 = waypoints[i + 2];
-				}
+			double matrix[4][4] = {
+				{ 0, 2, 0, 0 },
+				{ -a, 0, a, 0 },
+				{ 2 * a, -6 + a, 6 - 2 * a, -a },
+				{ -a, 4 - a, -4 + a, a }
+			};
 
-				result = catmullRomFirst(t, c1, c2, c3);
-			} else if (i == waypoints.size() - 2) {
-				c1 = waypoints[i - 1];
-				c2 = waypoints[i];
-				c3 = waypoints[i + 1];
-				result = catmullRomLast(t, c1, c2, c3);
-			} else {
-				c1 = waypoints[i - 1];
-				c2 = waypoints[i];
-				c3 = waypoints[i + 1];
+			double first = (1 * matrix[0][0] + t * matrix[1][0] + t * t * matrix[2][0] + t * t * t * matrix[3][0]) / 2;
+			double second = (1 * matrix[0][1] + t * matrix[1][1] + t * t * matrix[2][1] + t * t * t * matrix[3][1]) / 2;
+			double third = (1 * matrix[0][2] + t * matrix[1][2] + t * t * matrix[2][2] + t * t * t * matrix[3][2]) / 2;
+			double fourth = (1 * matrix[0][3] + t * matrix[1][3] + t * t * matrix[2][3] + t * t * t * matrix[3][3]) / 2;
 
-				if (i + 2 == waypoints.size()) {
-					c4 = c3;
-				} else {
-					c4 = waypoints[i + 2];
-				}
-
-				result = catmullRomMiddle(t, c1, c2, c3, c4);
-			}
-#endif
+			result.x = c1.x * first + c2.x * second + c3.x * third + c4.x * fourth;
+			result.y = c1.y * first + c2.y * second + c3.y * third + c4.y * fourth;
 
 			pathPoints.push_back(result);
 		}

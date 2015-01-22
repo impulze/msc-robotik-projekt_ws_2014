@@ -592,7 +592,7 @@ void Drawing::DrawingImpl::animate()
 	}
 
 	animated = true;
-	animationTimer->start(1000 / 16);
+	animationTimer->start(16);
 	animationPoints = pathPoints;
 
 	if (!animationPoints.empty()) {
@@ -733,6 +733,31 @@ bool Drawing::DrawingImpl::loadProject(QXmlStreamReader *reader)
 	while (true) {
 		if (reader->isStartElement()) {
 			QString name = reader->name().toString();
+
+			if (name == "algorithm") {
+				reader->readNext();
+
+				if (!reader->isCharacters()) {
+					return false;
+				}
+
+				if (reader->text().toString() == "Dijkstra") {
+					room->setAlgorithm(Room::Dijkstra);
+				} else if (reader->text().toString() == "A*") {
+					room->setAlgorithm(Room::AStar);
+				}
+
+				reader->readNext();
+
+				if (!reader->isEndElement() || reader->name().toString() != "algorithm") {
+					return false;
+				}
+
+				reader->readNextStartElement();
+
+				continue;
+			}
+
 			QXmlStreamAttributes attributes = reader->attributes();
 			QString showValue = attributes.value("show").toString();
 			bool showValueInt = showValue.toInt();
