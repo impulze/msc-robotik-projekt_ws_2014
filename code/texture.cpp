@@ -46,7 +46,7 @@ Texture::TextureImpl::TextureImpl(Image const &image)
 				throw std::runtime_error("Only RGB and RBGA images supported in texture.");
 		}
 
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, glWidth, glHeight, 0, format, GL_UNSIGNED_BYTE, data);
+		glTexImage2D(GL_TEXTURE_2D, 0, format, glWidth, glHeight, 0, format, GL_UNSIGNED_BYTE, data);
 		checkGLError();
 
 		// replace the actual drawing color

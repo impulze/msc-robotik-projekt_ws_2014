@@ -22,7 +22,7 @@ int main(int argc, char **argv)
 
 	mainWindow.show();
 
-	sighandler_t sigResult = std::signal(SIGINT, signalHandler);
+	void (*sigResult)(int) = std::signal(SIGINT, signalHandler);
 
 	if (sigResult == SIG_ERR) {
 		throw std::runtime_error("Cannot install signal handler.");

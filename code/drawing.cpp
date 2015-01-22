@@ -11,6 +11,9 @@
 #include <QtCore/QElapsedTimer>
 #include <QtCore/QTimer>
 
+#ifdef WIN32
+#include <GL/glew.h>
+#endif
 #include <GL/gl.h>
 #include <GL/glu.h>
 #include <IL/il.h>
@@ -283,7 +286,7 @@ void Drawing::DrawingImpl::mouseClick(int x, int y)
 		case Drawing::WaypointEnd:
 			changed = room->setEndpoint(Coord2D(x, y));
 			break;
-		
+
 		default:
 			if (show_[ShowNeighbours]) {
 				Coord2D coord;
@@ -309,6 +312,31 @@ std::size_t Drawing::DrawingImpl::countWaypoints() const
 
 void Drawing::DrawingImpl::initialize()
 {
+#ifdef WIN32
+    GLenum result = glewInit();
+
+    std::string glewVersionString;
+    std::string vertexBufferString;
+
+    if (result != GLEW_OK) {
+        glewVersionString = "GLEW not correctly supported.\n" + std::string(reinterpret_cast<const char *>(glewGetErrorString(result)));
+    } else {
+        glewVersionString = "GLEW supported.\n" + std::string(reinterpret_cast<const char *>(glewGetString(GLEW_VERSION)));
+    }
+
+    if (!GLEW_ARB_vertex_buffer_object) {
+        vertexBufferString = "OpenGL VBO not supported.";
+    } else {
+        vertexBufferString = "OpenGL VBO are supported.";
+    }
+
+    statusText_->setText(QString::fromStdString(glewVersionString + "\n" + vertexBufferString));
+
+    if (result != GLEW_OK) {
+        return;
+    }
+#endif
+
 	glEnable(GL_DEPTH_TEST);
 
 	GLdouble vertices[(300 + 1) * 2];
@@ -336,6 +364,7 @@ void Drawing::DrawingImpl::initialize()
 		throwErrorFromGLError();
 	} catch (...) {
 		glDeleteBuffers(1, &circleVBO);
+		throw;
 	}
 
 	{
@@ -345,7 +374,7 @@ void Drawing::DrawingImpl::initialize()
 		vertices[6] = 3; vertices[7] = -3;
 	}
 
-	glGenBuffersARB(2, &crossVBO);
+	glGenBuffersARB(1, &crossVBO);
 	throwErrorFromGLError();
 
 	try {
@@ -357,6 +386,7 @@ void Drawing::DrawingImpl::initialize()
 		throwErrorFromGLError();
 	} catch (...) {
 		glDeleteBuffers(2, &crossVBO);
+		throw;
 	}
 
 	texture = new Texture(room->image());
