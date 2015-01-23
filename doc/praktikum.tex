@@ -10,7 +10,7 @@
 \usepackage{tabularx}
 \usepackage{amsmath,amssymb,amstext}
 \usepackage{bibtopic}
-\usepackage{float}
+%\usepackage{float}
 \usepackage{hyperref}
 \usepackage{multirow}
 \usepackage{listings}
@@ -19,7 +19,6 @@
 \renewcommand{\lstlistlistingname}{Verzeichnis der Quellcodes}
 
 \pagestyle{plain}
-\bibliographystyle{alpha}
 
 \newcommand{\cmacro}[1]{\mbox{\textsc{#1}}}
 
@@ -122,7 +121,7 @@ den Roboter in diesem Umgebungsmodell so navigieren zu lassen, dass er keine bel
 um so eine Kollisionsprüfung zu vermeiden.
 Im Falle einer Berührung mit einer teilbesetzten Zelle, muss eine Kollisionsprüfung vorgenommen werden.
 
-Eine Alternative zum Umgebungsmodell ist das Konfigurationsmodell.
+Eine Erweiterung oder Alternative zum Umgebungsmodell ist das Konfigurationsmodell.
 Im Konfigurationsmodell wird der Roboter als Punkt (in der Bildverarbeitung z.B. ein Pixel) modelliert.
 Die Objekte im Raum werden entsprechend des Durchmessers des Roboters mit einem Rand versehen.
 Die Betrachtung dieses Modells erlaubt eine einfachere Bahnplanung.
@@ -130,7 +129,7 @@ Der Unterschied der beiden Modelle kann analog in der Bildverarbeitung bei der E
 wiedergefunden werden.
 
 \subsection{Dijkstra-Algorithmus}
-
+\label{Dijkstra}
 Der Dijkstra-Algorithmus wurde 1956 vom Wissenschaftler Edsger Dijkstra entwickelt.
 Er dient zur Findung des kürzesten Pfades in einem gewichteten Graphen mit positiven
 Kantengewichtungen.
@@ -148,7 +147,7 @@ Ist man am Endknoten angelangt, so kann der Algorithmus hier terminieren, wenn n
 Weg zwischen einem Start- und Endknoten gesucht wird.
 
 \subsection{A*-Algorithmus}
-
+\label{AStar}
 Der A*-Algorithmus ist im wesentlichen eine Erweiterung und Verbesserung des Dijkstra-Algorithmus.
 Er wurde im Stanford Forschungsinstitut 1968 erstmalig beschrieben.
 Um die Laufzeit zu verbessern, benutzt der A*-Algorithmus eine heuristische Funktion.
@@ -278,9 +277,10 @@ Teil einer Tür des Raumes ist.
 Dies ist im weiteren Verlauf notwendig, damit ohne weitere Algorithmen erkannt wird, wo sich eine
 Tür im Raum befindet, damit genau in der Mitte einer Tür ein Wegpunkt gesetzt werden kann.
 Jegliche andere Farbe bedeutet, dass sich dieser Pixel im Raum befindet.
-Somit ist es z.B. möglich den Boden des Raums einzufärben.
+Somit ist es z.B. möglich den Boden des Raumes einzufärben.
 
 \subsubsection{Rahmenpolygone des Raumes}
+\label{Rahmenpolygone}
 Die Schnittstelle zum Modul der Bildverarbeitung bietet nun eine Funktion, um das Rahmenpolygon
 des Raumes, sowie der darin befindlichen Objekte und der Türen zu erhalten.
 Im 1. Schritt wird eine Abbildung erzeugt, welche für jede Koordinate im Bild speichert,
@@ -424,9 +424,140 @@ Eine Animation kann nicht abgebrochen werden.
 \subsection{Wegfindung}
 \label{Wegfindung}
 
-Um diese Polygone zu ermitteln, wird eine \emph{Constrained Delaunay Triangulation} (kurz: \emph{CDT})
-verwendet.
-Bei einer Constrained Delaunay Triangulation 
+Die einzelnen Schritte der Wegfindung werden im Programm systematisch getrennt, sie umfassen
+die Triangulierung der Wegpunkte, das Herausfinden von direkt benachbarten Wegpunkten, das Herauslöschen
+von kollidierenden Kanten, das Erstellen der Pfadkurve und das Markieren von kollidieren Punkten
+der Pfadkurve.
+Eine wesentliche Säule zur Lösung dieser Teilprobleme ist die Geometrie und die darin befindlichen
+Algorithmen.
+In diesem Abschnitt werden die einzelnen Teilprobleme genauer beschrieben.
+
+\subsubsection{Triangulierung des Raumes}
+\label{Raum-Triangulierung}
+
+Wie bereits im Kapitel Bildverarbeitung (spez. Rahmenpolygone des Raumes \ref{Rahmenpolygone}) erklärt wurde,
+werden die Eckpunkte des Rauminneren (inkl. der Eckpunkte der darin befindlichen Objekte) zu entsprechenden
+Kanten verbunden, so dass sie die Grenzen des Raumes abbilden können.
+Durch einfache mathematische Formeln kann dann anhand der Dreiecke überprüft werden, ob sich Punkte
+innerhalb oder außerhalb des Raumes befinden.
+Als Hilfestellung dient die \emph{Constrained Delaunay Triangulation} (kurz: \emph{CDT}).
+Sie wurde in der CGAL-Bibliothek \cite{cgal} implementiert und noch einmal im Handbuch näher beschrieben \cite{cdt1}.
+Als Basis dient die \emph{Delaunay Triangulation} (siehe Triangulierung der Wegpunkte \ref{WP-Triangulierung}).
+Nachdem die Kantenpunkte der Rahmen mit Delaunay trianguliert wurden, werden alle Dreiecke die einen Punkte auf
+den gewollten Kanten der Raumpolygone (\emph{Constraints}) haben entfernt, sofern die Kanten nicht schon Teil
+des Dreieckes ist.
+Das entstandene leere Polygon zwischen den Punkten wird dann erneut einfach trianguliert (nicht mit Delaunay).
+Aus diesem Grund ist die \emph{Constrained Delaunay Triangulation} unter Umständen keine vollständige
+\emph{Delaunay Triangulation} mehr.
+
+\begin{figure}[h]
+\includegraphics[width=0.9\textwidth]{bild1.jpg}
+\caption{Die Triangulierung eines Raumes mit der \emph{Constrained Delaunay Triangulation}}
+\end{figure}
+
+\subsubsection{Triangulierung der Wegpunkte}
+\label{WP-Triangulierung}
+
+Die Wegpunkte, inkl. Start- und Endpunkte werden mit der \emph{Delaunay Triangulation} trianguliert.
+Eine \emph{Delaunay Triangulation} (kurz: \emph{DT}) versucht es die Winkel der Dreiecke möglichst
+groß zu machen und somit kleine Dreiecke zu vermeiden.
+Dadurch wirkt die Triangulierung "natürlich".
+Die Implementierung die im Programm benutzt wurde, stammt von der CGAL-Bibliothek \cite{cgal} (siehe \cite{dt1}).
+Als Alternative hat die Implementierung auch \emph{Regular triangulations} zur Verfügung gestellt.
+Es wurde auf die \emph{Delaunay Triangulation} zurückgegriffen, da sich dazu mehr Dokumentation
+auf Anhieb finden ließ.
+
+\begin{figure}[h]
+\includegraphics[width=\textwidth]{bild2.jpg}
+\caption{Die Triangulierung von Wegpunkten mit der \emph{Delaunay Triangulation}}
+\end{figure}
+
+\subsubsection{Kollisionsprüfung im Raum}
+\label{Kollisionsprüfung}
+
+Werden Wegpunkte oder der Start- bzw. Endpunkt über die Benuteroberfläche gesetzt, so
+prüft der Programmcode ob dieser innerhalb des Raumes liegen.
+Dazu dient die Triangulierung der Rahmenpolygone des Raumes (siehe \ref{Rahmenpolygone}).
+Das Problem kann darauf zurückgeführt werden, zu prüfen, ob ein Punkt in einem Polygon vorhanden ist.
+Wie in \cite{pointincl} beschrieben, kann dieses Problem weiter eingegrenzt werden, indem man prüft,
+ob ein Punkt in den Dreiecken der Polygon-Triangulierung ist.
+Dazu dienen verschiedene Algorithmen, so z.B. das Ablaufen der Dreieckskanten und Prüfung, ob ein
+Punkt links oder rechts von der Kante liegt.
+Die CGAL-Bibliothek, welche die Triangulierungen unterstützt, bietet in der Schnittstelle für die
+Verwendung der \emph{Constrained Delaunay Triangulation} eine Methode, welche prüft, ob ein Punkt
+in der Triangulierung vorhanden ist oder nicht.
+Diese Methode verhindert nun, dass Punkte außerhalb des Raumes gesetzt werden können.
+
+\subsubsection{Generierung des Pfades}
+
+Der Pfad wird nun mit Hilfe eines gewichteten Graphen erstellt.
+Der gewichtete Graph entsteht zum einen durch die Triangulierung der Wegpunkte (siehe \ref{WP-Triangulierung})
+und eine zusätzliche Gewichtung der entstandenen Dreiecksseiten.
+Zunächst werden alle Kanten zu direkten Nachbarn, also Punkte die mit genau einer Kante vom betrachteten Knoten verbunden sind,
+in eine Menge eingefügt.
+Für jede dieser Kanten wird dann geprüft, ob sie eine Kante der Rahmenpolygone (siehe \ref{Rahmenpolygone}) schneidet.
+Dazu dient ein Algorithmus, der auf Vektor- und seine Kreuzprodukte basiert (siehe \cite{linelineint}).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.3\textwidth]{bild5.jpg}
+\caption{Zwei sich schneidende Strecken in Vektordarstellung}
+\label{linelinepic}
+\end{figure}
+
+Wie in Abbildung \ref{linelinepic} gezeigt wird, existiert ein Schnittpunkt wenn ein $t$ und $u$ gefunden wird,
+so dass $p + t \cdot r = q + u \cdot s$.
+Bildet man auf beiden Seiten der Gleichung das Kreuzprodukt mit dem Vektor $s$, erhält man mit linearer Algebra
+nun Gleichungen für $u$ und $t$.
+
+\begin{align*}
+t = \frac{(q - p) \times s}{r \times s}\\
+u = \frac{(p - q) \times r}{r \times s}
+\end{align*}
+
+Durch das Auftreten des Nenners $r \times s$ ist es notwendig zu prüfen, dass dieser nie $0$ ist.
+Ist $r \times s = 0$, so gilt:
+\begin{itemize}
+\item Die Strecken sind kollinear, falls $(q - p) \times r = 0$
+\item Die Strecken sind parallel, sonst
+\end{itemize}
+Ist $r \times s \neq 0$, so gilt:
+\begin{itemize}
+\item Die Strecken treffen sich bei $p + t \cdot r = q + u \cdot s$, wenn $0 \le t \le 1$ und $0 \le u \le 1$ sind
+\item Die Strecken sind weder parallel, noch treffen sie sich, sonst
+\end{itemize}
+
+Die Schnittpunktprüfung findet nun für jede Kante der Rahmenpolygone statt.
+Gibt es 2 oder mehrere Schnittpunkte einer Kante mit einem Rahmenpolygon, so wird für jeden
+Schnittpunkt eine neue Kante zum nächsten Schnittpunkt erzeugt.
+Beispiel: $Edge_{0} = \overline{P0 P1}$, $Edge_{2} = \overline{P1 P2}$, $Edge_{3} = \overline{P2 P0}$
+Für jede dieser Kanten wird dann der Mittelpunkt berechnet und mit Hilfe der Kollisionsprüfung im Raum
+(siehe \ref{Kollisionsprüfung}) wird festgestellt, ob der Mittelpunkt im Raum liegt.
+Damit wird verhindert, dass \emph{false positives} auftreten, also Kanten die z.B. auf 2 Rahmen von
+Objekten liegen, jedoch sonst vollständig im Raum sind.
+Gibt es nur einen Schnittpunkt, so wird geprüft, ob dieser auf einem Rahmen liegt (Wand oder Objekt),
+ist dies der Fall, ist die Kante vollständig im Raum, da Rahmen von Objekten grundsätzlich als "Innerhalb des Raumes"
+angesehen werden.
+
+\begin{figure}[h]
+\centering
+\includegraphics{bild3.jpg}
+\includegraphics{bild4.jpg}
+\caption{Kollisionsprüfung von Kanten zu direkten Nachbarn (rote Kanten kollidieren)}
+\label{kollisionnachbar}
+\end{figure}
+
+Als nächster Schritt wird eine Abbildung von jedem Wegpunkt zu einer Menge von erreichbaren Nachbarknoten angelegt.
+Diese Kanten werden dann mit dem euklidischen Abstand gewichtet und man erhält so als Folge einen gerichteten
+Graphen.
+Dieser Graph dient als Grundlage zur Berechnung des Pfades basierend auf Wegpunkte mit Dijkstra und A*
+(beschrieben in \ref{Dijkstra} und \ref{AStar}).
+Für den Programmcode wurden eigene Implementierungen von Dijkstra und A* entwickelt.
+Dabei teilen sich die beiden Algorithmen den Basiscode, da Dijkstra nur ein Spezialfall des A*-Algorithmus ist \cite{astarspecial},
+in der die heuristische Funktion jede Eingabe auf $0$ abbildet.
+Für die Implementierung diente der Pseudocode im Wikipedia-Artikel \cite{astarpseudo}.
+
+\subsubsection{Kollisionsprüfung des Pfades}
 
 \section{Probleme und Ausblick}
 
@@ -451,5 +582,9 @@ denkbar, dass andere Verfahren eingesetzt werden, um Wegpunkte zu verteilen (sie
 \section{Persönliches Fazit}
 
 \section{Quellen}
+
+\begin{btSect}[alpha]{praktikum}
+\btPrintAll
+\end{btSect}
 
 \end{document}
