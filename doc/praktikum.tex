@@ -25,12 +25,12 @@
 \usepackage{pdfpages}
 
 \title{
-	\textbf{Dokumentation für das Projekt in der Lehrveranstaltung Robotik}
+	\textbf{Wegfindung in 2 nahezu gleichgroßen 2D-Räumen mit Hindernissen}
 }
 
 \author{
 	\textit{Mierswa, Daniel} \\
-	Matrikelnummer: XXXXXX \\
+	Matrikelnummer: 681696 \\
 	daniel.b.mierswa@student.hs-rm.de \\
 }
 
@@ -161,7 +161,7 @@ Damit der Algorithmus optimal ist, darf die heuristische Funktion keine größer
 zwei Knoten liefern, als die kleinste tatsächliche Distanz zwischen ihnen.
 
 \subsection{Catmull-Rom Splines}
-
+\label{Catmull}
 %http://www.cemyuksel.com/research/catmullrom_param/catmullrom.pdf
 %http://www.cs.utexas.edu/~fussell/courses/cs384g/lectures/lecture16-Interpolating_curves.pdf
 
@@ -557,7 +557,36 @@ Dabei teilen sich die beiden Algorithmen den Basiscode, da Dijkstra nur ein Spez
 in der die heuristische Funktion jede Eingabe auf $0$ abbildet.
 Für die Implementierung diente der Pseudocode im Wikipedia-Artikel \cite{astarpseudo}.
 
-\subsubsection{Kollisionsprüfung des Pfades}
+Nachdem die Reihenfolge der Wegpunkte durch den Algorithmus berechnet wurde, wird der Catmull-Rom Spline zwischen
+den einzelnen Punkten gebildet (siehe \ref{Catmull}), um eine Kurve zur schönen Darstellung zu formen.
+Da das 1. und letzte Kurvenstück keinen vorherigen bzw. nächsten Stützpunkt besitzt, wird dort einfach der 1. bzw.
+letzte Punkt dupliziert.
+
+Falls Kanten zwischen Wegpunkten nicht mit Objekten oder Wänden kollidieren, kann es trotzdem vorkommen, dass die
+generierte Kurve, also der eigentliche Bewegungslauf des Roboters, mit Gegenständen oder Wanden kollidiert.
+Deshalb wird geprüft, ob jeder Teilpunkt eines Kurvensegments zwischen 2 Stützpunkten (die Anzahl der Teilpunkte
+hängt von der festgelegten Granularität im Quellcode ab) im Raum liegt.
+
+\section{Durchführung des Anwendungsfalls}
+Bei der Abgabe des Dokuments an den Dozenten, wurde eine CD mitgegeben, auf der das Programm ausführbar
+für die Betriebssysteme Windows 7 und Ubuntu 14.04.1 vorliegt.
+Nach dem Start präsentiert sich die Benutzeroberfläche.
+Durch Klicken auf \emph{Project} -> \emph{Load Room} kann eine Bilddatei geladen werden.
+Auf der CD liegt eine Datei namens \emph{Room.png} bei, die geladen werden kann.
+Nun können statistisch Wegpunkte verteilt werden, indem man im Feld \emph{Amount of nodes} eine Zahl
+eingibt und bestätigt.
+Alternativ können die Wegpunkte hinzugefügt werden, indem man \emph{Add waypoint} markiert und mit
+der Maus auf die gewünschte Stelle klickt.
+Die gleiche Vorgehensweise kann angewandt werden, um Wegpunkte zu löschen oder Start- und Endpunkt zu setzen.
+Zu jedem Zeitpunkt kann man \emph{Show triangulation} anklicken, um sich die Triangulierung der Wegpunkte
+anzusehen.
+Klickt man auf \emph{Show path}, so wird ein Pfad angezeigt, falls dieser verfügbar ist.
+Möchte man z.B. prüfen, ob die benachbarten Knoten von einem Punkt erreicht werden können, entfernt
+man die Häkchen bei den Wegpunkt-Modifizierungen und setzt ein Häkchen bei \emph{Show neighbours}.
+Dann klickt man mit der linken Maus auf den zu betrachtenden Wegpunkt.
+Möchte man sehen wie sich der Roboter bewegt, so klickt man auf \emph{Animate}.
+Um einen anderen Wegplanungs-Algorithmus zu wählen, steht ein Dropdown-Menü unter dem Knopf zur Verfügung.
+Eine Gesamtstatistik kann man sich mit einem Klick auf \emph{Statistics} anzeigen lassen.
 
 \section{Probleme und Ausblick}
 
@@ -581,10 +610,40 @@ denkbar, dass andere Verfahren eingesetzt werden, um Wegpunkte zu verteilen (sie
 
 \section{Persönliches Fazit}
 
+Bei der Bearbeitung dieses Projekts habe ich erkannt, dass es viele mathematische Teilprobleme zu lösen gilt, um eine
+Wegfindung durchzuführen.
+Dabei habe ich vor allem festgestellt, dass Lösungen nie allgemeingültig sind, sondern sehr stark vom Anwendungsfall abhängig sind.
+So z.B. sind die Algorithmen in diesem Projekt nicht auf geringen Speicherverbrauch bzw. Quelltext optimiert, so dass
+sie evtl. nicht in eingebetteten System Anwendungen finden können.
+Ein mathematisches Verständnis in Teilen der Geometrie ist durchaus notwendig, um Algorithmen zu verstehen und entsprechend
+anzuwenden, eine allgemeine Schnittstelle, um alle Berechnungen durchzuführen gibt es nicht.
+Ebenfalls war ich in der Lage meine Kenntnisse bezüglich der GUI-Programmierung, insbesondere dem Einbetten von OpenGL-Szenen
+in solchen.
+
+Bezüglich der Lehrveranstaltung kann ich festhalten, dass ich eine Bahnplanung in einem 2D-Raum durchführen kann und verstanden habe,
+welche Lösungsansätze es gibt und warum sich manche etabliert haben.
+Ebenfalls habe ich das Prinzip der Splines verinnerlicht und verstehe, dass eine korrekte kollisionsfreie Bahnplanung immer noch
+zur Folge haben kann, dass ein Roboter bei entsprechendem Bewegungsradius kollidieren kann.
+
 \section{Quellen}
+
+\subsection{Literaturverzeichnis}
 
 \begin{btSect}[alpha]{praktikum}
 \btPrintAll
 \end{btSect}
+
+\subsection{Verwendete Software und Frameworks}
+\begin{itemize}
+\item Qt (\url{http://qt-project.org})
+\item OpenGL, GLU (\url{http://www.opengl.org})
+\item DevIL, ILU (\url{http://openil.sourceforge.net})
+\item CGAL (\url{http://cgal.org})
+\item GLEW (\url{http://glew.sourceforge.net})
+\item Boost (\url{http://www.boost.org})
+\item GMP (\url{http://gmplib.org})
+\item MinGW (\url{http://www.mingw.org})
+\item GCC (\url{http://gcc.gnu.org})
+\end{itemize}
 
 \end{document}
