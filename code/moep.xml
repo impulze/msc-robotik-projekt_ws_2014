@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project>
+    <drawing>
+        <image>Room.png</image>
+        <show_triangulation show="0"/>
+        <show_room_triangulation show="0"/>
+        <show_waypoints show="1"/>
+        <show_path show="1"/>
+        <show_neighbours show="1"/>
+    </drawing>
+    <room>
+        <startpoint x="375" y="423"/>
+        <endpoint x="401" y="269"/>
+        <waypoint x="458" y="164"/>
+        <waypoint x="574" y="274"/>
+    </room>
+</project>
